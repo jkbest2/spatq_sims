@@ -417,7 +417,7 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[SpatQSims]]
 deps = ["CSV", "Distributions", "Feather", "FisherySim", "HDF5", "Plots", "Random", "Statistics", "StatsBase", "TweedieDistributions"]
-git-tree-sha1 = "4463cb899b2e6d79bcc2da052b1ba19882e48358"
+git-tree-sha1 = "5c17f0d7d7fe38761907bfb15c5dbf7c8365b69b"
 repo-rev = "master"
 repo-url = "https://github.com/jkbest2/SpatQSims.jl.git"
 uuid = "baf29d45-b477-4558-8186-4051bce8e0df"
