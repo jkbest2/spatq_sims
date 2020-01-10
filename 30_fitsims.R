@@ -4,13 +4,13 @@ library(tidyverse)
 main <- function() {
   specify_fits <- function(repl = 1:100,
                            data = c("all", "indep"),
-                           scenario = "combo",
+                           opmod = "combo",
                            root = "results") {
-    df <- cross_df(list(data = data, scenario = scenario, repl = repl)) %>%
+    df <- cross_df(list(data = data, opmod = opmod, repl = repl)) %>%
       mutate(repl_str = str_pad(repl, 2, pad = 0),
-             Rdata = file.path(root, paste0(repl_str, "_", scenario, "_",
+             Rdata = file.path(root, paste0(repl_str, "_", opmod, "_",
                                             data, ".Rdata")),
-             index = file.path(root, paste0(repl_str, "_", scenario,
+             index = file.path(root, paste0(repl_str, "_", opmod,
                                             "_", data, "_index.csv")),
              sub_df = map(data, specify_subset),
              map_pars = map(data, specify_map_pars))
@@ -22,15 +22,15 @@ main <- function() {
       filter(!file.exists(Rdata))
   }
 
-  specify_subset <- function(data_spec) {
-    sub_df <- switch(data_spec,
+  specify_subset <- function(estmod) {
+    sub_df <- switch(estmod,
                      all = NULL,
                      indep = data.frame(vessel_idx = 2, n = 0))
     sub_df
   }
 
-  specify_map_pars <- function(data_spec) {
-    switch(data_spec,
+  specify_map_pars <- function(estmod) {
+    switch(estmod,
            all = c(
              "gamma_n", "gamma_w"
              ## ,"omega_n", "omega_w"
@@ -59,7 +59,7 @@ main <- function() {
   for (idx in seq_len(nrow(fit_list))) {
     spec <- fit_list[idx, ]
     obj <- make_sim_adfun(repl = spec$repl,
-                          sc = spec$scenario,
+                          sc = spec$opmod,
                           sub_df = spec$sub_df[[1]],
                           root_dir = ".",
                           max_T = max_T,
@@ -74,11 +74,11 @@ main <- function() {
     rep <- report_spatq(obj)
     sdr <- sdreport_spatq(obj)
 
-    saveRDS(list(fit = fit, lpb = lpb, rep = rep, sdr = sdr),
+    saveRDS(list(spec = spec, fit = fit, lpb = lpb, rep = rep, sdr = sdr),
             spec$Rdata)
 
     ## Read true population state and calculate index
-    true_index <- read_popstate(spec$repl, spec$scenario) %>%
+    true_index <- read_popstate(spec$repl, spec$opmod) %>%
       rename(year = time,
              raw_true = pop) %>%
       filter(year <= max_T) %>%
@@ -87,8 +87,8 @@ main <- function() {
     ## Organize details for estimated index
     which_index <- which(names(sdr$value) == "Index")
     est_index <- tibble(repl = spec$repl,
-                        scenario = spec$scenario,
-                        data_spec = spec$data,
+                        opmod = spec$opmod,
+                        estmod = spec$data,
                         year = 1:max_T,
                         raw_est = sdr$value[which_index],
                         index_est = rescale_index(raw_est),
