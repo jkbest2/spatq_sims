@@ -20,12 +20,12 @@ get_mgc <- function(fitlist) {
 }
 
 read_index_csv <- function(filename) {
-  scenarios <- c("combo", "pref", "spatq")
-  data_specs <- c("all", "indep")
+  opmods <- c("combo", "pref", "spatq")
+  estmods <- c("all", "indep")
   read_csv(filename,
            col_types = cols(repl = col_factor(levels = 1:100),
-                            scenario = col_factor(levels = scenarios),
-                            data_spec = col_factor(levels = data_specs),
+                            opmod = col_factor(levels = opmods),
+                            estmod = col_factor(levels = estmods),
                             year = col_integer(),
                             raw_est = col_double(),
                             index_est = col_double(),
@@ -42,38 +42,38 @@ read_all_indices <- function(root_dir = "results") {
 
 evaluate_bias <- function(index_df) {
   index_df %>%
-    group_by(scenario, data_spec) %>%
+    group_by(opmod, estmod) %>%
     nest() %>%
     mutate(mod = map(data, ~ lm(log(raw_est) ~ repl + log(raw_true), data = .x)),
            coef = map(mod, coef),
            delta = map_dbl(coef, pluck, "log(raw_true)")) %>%
-    select(scenario, data_spec, delta)
+    select(opmod, estmod, delta)
 }
 
 evaluate_rmse <- function(index_df) {
   index_df %>%
     mutate(sq_err = (index_est - index_true)^2) %>%
-    group_by(scenario, data_spec) %>%
+    group_by(opmod, estmod) %>%
     summarize(rmse = sqrt(mean(sq_err))) %>%
-    select(scenario, data_spec, rmse)
+    select(opmod, estmod, rmse)
 }
 
 evaluate_calibration <- function(index_df) {
   index_df %>%
     mutate(pnorm = pnorm(index_true, index_est, sd)) %>%
-    ggplot(aes(x = pnorm, y = stat(density), fill = data_spec)) +
+    ggplot(aes(x = pnorm, y = stat(density), fill = estmod)) +
     geom_histogram(breaks = seq(0.0, 1.0, 0.1)) +
     geom_hline(yintercept = 1) +
-    facet_grid(scenario ~ data_spec)
+    facet_grid(opmod ~ estmod)
 }
 
 plot_index_devs <- function(index_df) {
   index_df %>%
     mutate(dev = index_est - index_true) %>%
-    ggplot(aes(x = year, y = dev, color = data_spec, group = repl)) +
+    ggplot(aes(x = year, y = dev, color = estmod, group = repl)) +
     geom_line() +
     geom_hline(yintercept = 0, linetype = 2) +
-    facet_grid(scenario ~ data_spec)
+    facet_grid(opmod ~ estmod)
 }
 
 eval_main <- function(results_dir = "results", eval_dir = "results/evaluation") {
