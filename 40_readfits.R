@@ -14,9 +14,8 @@ get_convcode <- function(fitlist) {
   pluck(fitlist, "fit", "convergence")
 }
 
-mgc_getter <- attr_getter("mgc")
 get_mgc <- function(fitlist) {
-  pluck(fitlist, "fit", mgc_getter)
+  pluck(fitlist, "fit", attr_getter("mgc"))
 }
 
 read_index_csv <- function(filename) {
@@ -64,16 +63,18 @@ evaluate_calibration <- function(index_df) {
     ggplot(aes(x = pnorm, y = stat(density), fill = estmod)) +
     geom_histogram(breaks = seq(0.0, 1.0, 0.1)) +
     geom_hline(yintercept = 1) +
-    facet_grid(opmod ~ estmod)
+    facet_grid(opmod ~ estmod) +
+    guides(fill = FALSE)
 }
 
 plot_index_devs <- function(index_df) {
   index_df %>%
     mutate(dev = index_est - index_true) %>%
     ggplot(aes(x = year, y = dev, color = estmod, group = repl)) +
-    geom_line() +
+    geom_line(alpha = 0.2) +
     geom_hline(yintercept = 0, linetype = 2) +
-    facet_grid(opmod ~ estmod)
+    facet_grid(estmod ~ opmod) +
+    guides(color = FALSE)
 }
 
 eval_main <- function(results_dir = "results", eval_dir = "results/evaluation") {
@@ -92,6 +93,8 @@ eval_main <- function(results_dir = "results", eval_dir = "results/evaluation") 
   write_csv(rmse_df, file.path(eval_dir, "rmse.csv"))
   ggsave(file.path(eval_dir, "calibration.pdf"), calibration_plot)
   ggsave(file.path(eval_dir, "index_devs.pdf"), index_devs)
+  ggsave(file.path(eval_dir, "calibration.png"), width = 6, height = 4, calibration_plot)
+  ggsave(file.path(eval_dir, "index_devs.png"), width = 6, height = 4, index_devs)
 }
 
 eval_main()
