@@ -1,61 +1,60 @@
 library(spatq)
 library(tidyverse)
 
-main <- function() {
-  specify_fits <- function(repl = 1:100,
-                           data = c("all", "indep"),
-                           opmod = "combo",
-                           root = "results") {
-    df <- cross_df(list(data = data, opmod = opmod, repl = repl)) %>%
-      mutate(repl_str = str_pad(repl, 2, pad = 0),
-             Rdata = file.path(root, paste0(repl_str, "_", opmod, "_",
-                                            data, ".Rdata")),
-             index = file.path(root, paste0(repl_str, "_", opmod,
-                                            "_", data, "_index.csv")),
-             sub_df = map(data, specify_subset),
-             map_pars = map(data, specify_map_pars))
-    df
-  }
+specify_fits <- function(repl = 1:100,
+                         data = c("all", "indep"),
+                         opmod = "combo",
+                         root = "results") {
+  if (!file.exists(root)) dir.create(root)
+  df <- cross_df(list(data = data, opmod = opmod, repl = repl)) %>%
+    mutate(repl_str = str_pad(repl, 2, pad = 0),
+           Rdata = file.path(root, paste0(repl_str, "_", opmod, "_",
+                                          data, ".Rdata")),
+           index = file.path(root, paste0(repl_str, "_", opmod,
+                                          "_", data, "_index.csv")),
+           sub_df = map(data, specify_subset),
+           map_pars = map(data, specify_map_pars))
+  df
+}
 
-  fits_todo <- function(fit_spec, result_root = "results") {
-    fit_spec %>%
-      filter(!file.exists(Rdata))
-  }
+fits_todo <- function(fit_spec, result_root = "results") {
+  fit_spec %>%
+    filter(!file.exists(Rdata))
+}
 
-  specify_subset <- function(estmod) {
-    sub_df <- switch(estmod,
-                     all = NULL,
-                     indep = data.frame(vessel_idx = 2, n = 0))
-    sub_df
-  }
+specify_subset <- function(estmod) {
+  sub_df <- switch(estmod,
+                   all = NULL,
+                   indep = data.frame(vessel_idx = 2, n = 0))
+  sub_df
+}
 
-  specify_map_pars <- function(estmod) {
-    switch(estmod,
-           all = c(
-             "gamma_n", "gamma_w"
-             ## ,"omega_n", "omega_w"
-            ,"epsilon1_n", "epsilon1_w"
-            ,"eta_n", "eta_w"
-             ## ,"phi_n", "phi_w"
-            ,"psi1_n", "psi1_w"
-            ## ,"log_tau"
-            , "log_kappa"
-           ),
-           indep = c(
-             "gamma_n", "gamma_w"
-            ## ,"omega_n", "omega_w"
-            ,"epsilon1_n", "epsilon1_w"
-            ,"lambda_n", "lambda_w"
-            ,"eta_n", "eta_w"
-            ,"phi_n", "phi_w"
-            ,"psi1_n", "psi1_w"
-            ## ,"log_tau"
-            , "log_kappa"
-           ))
-  }
+specify_map_pars <- function(estmod) {
+  switch(estmod,
+         all = c(
+           "gamma_n", "gamma_w"
+           ## ,"omega_n", "omega_w"
+          ,"epsilon1_n", "epsilon1_w"
+          ,"eta_n", "eta_w"
+           ## ,"phi_n", "phi_w"
+          ,"psi1_n", "psi1_w"
+           ## ,"log_tau"
+         , "log_kappa"
+         ),
+         indep = c(
+           "gamma_n", "gamma_w"
+           ## ,"omega_n", "omega_w"
+          ,"epsilon1_n", "epsilon1_w"
+          ,"lambda_n", "lambda_w"
+          ,"eta_n", "eta_w"
+          ,"phi_n", "phi_w"
+          ,"psi1_n", "psi1_w"
+           ## ,"log_tau"
+         , "log_kappa"
+         ))
+}
 
-  max_T <- 15
-
+main <- function(max_T = 15) {
   fit_list <- fits_todo(specify_fits())
 
   for (idx in seq_len(nrow(fit_list))) {
