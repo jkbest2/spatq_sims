@@ -8,3 +8,5 @@ coordref.csv
 /*.RData
 *.o
 *.so
+/figs/
+/VAST-run/
