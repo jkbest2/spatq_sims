@@ -34,22 +34,22 @@ specify_map_pars <- function(estmod) {
          all = c(
            "gamma_n", "gamma_w"
            ## ,"omega_n", "omega_w"
-          ,"epsilon1_n", "epsilon1_w"
-          ,"eta_n", "eta_w"
+          , "epsilon1_n", "epsilon1_w"
+          , "eta_n", "eta_w"
            ## ,"phi_n", "phi_w"
-          ,"psi1_n", "psi1_w"
+          , "psi1_n", "psi1_w"
            ## ,"log_tau"
-         , "log_kappa"
+          , "log_kappa"
          ),
          indep = c(
            "gamma_n", "gamma_w"
-           ## ,"omega_n", "omega_w"
-          ,"epsilon1_n", "epsilon1_w"
-          ,"lambda_n", "lambda_w"
-          ,"eta_n", "eta_w"
-          ,"phi_n", "phi_w"
-          ,"psi1_n", "psi1_w"
-           ## ,"log_tau"
+           ## , "omega_n", "omega_w"
+          , "epsilon1_n", "epsilon1_w"
+          , "lambda_n", "lambda_w"
+          , "eta_n", "eta_w"
+          , "phi_n", "phi_w"
+          , "psi1_n", "psi1_w"
+           ## , "log_tau"
          , "log_kappa"
          ))
 }
