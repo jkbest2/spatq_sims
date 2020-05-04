@@ -6,3 +6,5 @@ coordref.csv
 /*.o
 /*.so
 /*.RData
+*.o
+*.so
