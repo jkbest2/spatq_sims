@@ -1,0 +1,423 @@
+#+TITLE: Chapter 1 - Spatial covariance parameter explorations
+
+* Setup
+#+NAME: setup
+#+BEGIN_SRC R :session *R*
+library(tidyverse)
+library(INLA)
+library(TMB)
+devtools::load_all("~/src/spatq", helpers = FALSE)
+
+compile("src/dumb.cpp")
+dyn.load(dynlib("dumb"))
+
+source("97_debug_fns.R")
+
+set.seed(12345)
+
+n_obs <- 2000
+#+END_SRC
+
+#+RESULTS: setup
+: 2000
+
+** Spatial prerequisites
+Create the spatial precision matrix; fix correlation range to 20.
+
+#+NAME: pre-spatial
+#+BEGIN_SRC R :session *R*
+mesh <- generate_mesh()
+fem <- generate_fem(mesh)
+
+index_grid <- seq(0.5, 99.5, 1)
+index_locs <- as.matrix(expand.grid(index_grid, index_grid))
+index_proj <- inla.spde.make.A(mesh, index_locs)
+
+rho <- 20
+sigma <- 1
+tau <- pars_tau(sigma^2, rho)
+kappa <- pars_kappa(rho)
+
+q <- tau^2 * (kappa^4 * fem$M0 + 2 * kappa^2 * fem$M1 + fem$M2)
+#+END_SRC
+
+#+RESULTS: pre-spatial
+
+Choose sampling locations and create the projection matrix.
+
+#+NAME: fishing-locs
+#+BEGIN_SRC R :session *R*
+catch_locs <- tibble(s1 = 100 * runif(n_obs),
+                     s2 = 100 * runif(n_obs))
+catch_proj <- inla.spde.make.A(mesh, as.matrix(catch_locs))
+#+END_SRC
+
+#+RESULTS: fishing-locs
+
+** Generate independent samples from spatial field
+
+#+NAME: sim-omega
+#+BEGIN_SRC R :session *R*
+new_omega_indep <- function(q)
+  omega_indep <- inla.qsample(2, q)
+#+END_SRC
+
+#+RESULTS: sim_omega
+
+** Simulate fishing and package results for ~MakeADFun~
+Simulate using a logit-link log-normal catch.
+
+#+NAME: sim-fun
+#+BEGIN_SRC R :session *R*
+sim_catch <- function(p1, p2, catch_sigma) {
+  p_enc <- plogis(p1)
+  catch_meanlog <- p2 - catch_sigma^2 / 2
+  rbinom(1, 1, p_enc) * rlnorm(1, catch_meanlog, catch_sigma)
+}
+#+END_SRC
+
+#+RESULTS: sim-fun
+
+Do the simulations and wrap them up.
+
+#+NAME: sim-and-prep
+#+BEGIN_SRC R :session *R*
+new_replicate <- function(omega_indep, rho = 0, pois = FALSE) {
+  r <-  matrix(c(1, rho, rho, 1), nrow = 2)
+  nw_sd <- c(1, 0.2)
+  s <- diag(nw_sd) %*% r %*% diag(nw_sd)
+  Lt_nw <- chol(s)
+  omega <- omega_indep %*% Lt_nw
+  omega1 <- as.vector(omega[, 1])
+  omega2 <- as.vector(omega[, 2])
+
+  beta <- c(0.5, -0.5)
+  catch_sigma <- 0.75
+  spat1 <- as.vector(catch_proj %*% omega1)
+  spat2 <- as.vector(catch_proj %*% omega2)
+
+  p1 <- beta[1] + spat1
+  p2 <- beta[2] + spat2
+  obs <- map2_dbl(p1, p2, sim_catch, catch_sigma)
+
+  res <- list()
+
+  if (!pois) {
+  res$data <- list(obs = obs,
+                   A = catch_proj,
+                   IA = index_proj,
+                   spde = fem,
+                   link_fn = 0)
+
+  res$pars <- list(beta1 = beta[1],
+                   beta2 = beta[2],
+                   omega1 = rep_along(omega1, 0),
+                   omega2 = rep_along(omega2, 0),
+                   log_kappa = rep(log(kappa), 2),
+                   log_tau = log(tau * nw_sd),
+                   log_sigma = log(catch_sigma))
+  } else {
+  res$data <- list(obs = obs,
+                   A = catch_proj,
+                   IA = index_proj,
+                   spde = fem,
+                   link_fn = 1)
+  res$pars <- list(beta1 = log(-log(1 - plogis(beta[1]))),
+                   beta2 = beta[2] -
+                     log(-log(1 - plogis(beta[1]))) +
+                     log(plogis(beta[1])),
+                   omega1 = rep_along(omega1, 0),
+                   omega2 = rep_along(omega2, 0),
+                   log_kappa = rep(log(kappa), 2),
+                   log_tau = log(tau * nw_sd),
+                   log_sigma = log(catch_sigma))
+  }
+
+  res$map <- list()
+  res$rand <- c("omega1", "omega2")
+
+  return(res)
+}
+#+END_SRC
+
+** Make the ADFun using the prepared spec
+#+NAME: make-obj
+#+BEGIN_SRC R :session *R*
+make_obj <- function(spec, ...) {
+  MakeADFun(data = spec$data,
+            parameters = spec$pars,
+            map = spec$map,
+            random = spec$rand,
+            ...,
+            DLL = "dumb")
+}
+#+END_SRC
+
+#+RESULTS: make-obj
+
+** Fit the model
+Run ~optim~ twice to try to get a better fit. Include the joint precision so
+that we can check the condition number of the joint precision matrix. Finally,
+extract the pieces of interest. Can't keep all the ~obj~ or you'll quickly run
+out of memory.
+
+#+NAME: fit-function
+#+BEGIN_SRC R :session *R*
+fit_obj <- function(obj) {
+  fit <- optim(obj$par, obj$fn, obj$gr, method = "BFGS")
+  fit <- optim(fit$par, obj$fn, obj$gr, method = "BFGS")
+  sdr <- sdreport(obj, getJointPrecision = TRUE)
+
+  res <- tibble_row(pdhess = sdr$pdHess,
+                    joint_cond = kappa(sdr$jointPrecision),
+                    fixed_cond = kappa(sdr$cov.fixed),
+                    par_fixed = list(sdr$par.fixed),
+                    outer_mgc = max(sdr$gradient.fixed),
+                    par_random = list(sdr$par.random))
+}
+#+END_SRC
+
+#+RESULTS: fit-function
+
+For practicality, wrap up the fitting in a ~tryCatch~ so that errors aren't
+fatal and ~NA~ can be passed when failures do occur.
+
+#+NAME: safe-fit-function
+#+BEGIN_SRC R :session *R*
+res_fn <- function(spec){
+  tryCatch({
+    obj <- make_obj(spec, silent = TRUE)
+    fit_obj(obj)},
+    error = function(e)
+      tibble_row(pdhess = NA,
+                 joint_cond = NA,
+                 fixed_cond = NA,
+                 par_fixed = NA,
+                 outer_mgc = NA,
+                 par_random = NA))
+}
+
+#+END_SRC
+
+* Simulation study
+Choose the number of replicates 20 doesn't take forever to run but gives some
+idea. Remember that using two EMs and two correlation levels will result in 4
+times as many actual fits! Also, choose the correlation levels to be used.
+
+#+NAME: sim-setup
+#+BEGIN_SRC R :session *R*
+n_repl <- 20
+rho <- c(0, 0.8)
+#+END_SRC
+
+#+RESULTS: sim-setup
+|   0 |
+| 0.8 |
+
+Simulate spatial fields for each replicate. These are either used directly or
+correlated at the specified level later on. But keeping the same realizations
+within replicates eliminates some noise.
+
+#+NAME: spatial-realizations
+#+BEGIN_SRC R :session *R*
+omega_df <- tibble(repl = seq_len(n_repl),
+                   omega_indep = map(repl, ~ new_omega_indep(q)))
+#+END_SRC
+
+#+RESULTS: spatial-realizations
+
+Set up a data frame with each combination of realization, correlation, and EM.
+Prepare each realization for fitting.
+
+#+NAME: sim-df
+#+BEGIN_SRC R :session *R*
+sim_df <- cross_df(list(pois = c(FALSE, TRUE),
+                        rho = c(0, 0.8),
+                        repl = seq_len(n_repl))) %>%
+  left_join(omega_df, by = "repl") %>%
+  mutate(spec = pmap(list(omega_indep, rho, pois),
+                     ~ new_replicate(..1, ..2, ..3)))
+#+END_SRC
+
+#+RESULTS: sim-df
+
+Fit the EMs and output a data frame. The heavy lifting occurs during the calls
+to ~res_fn~ here.
+
+#+NAME: res-df
+#+BEGIN_SRC R :session *R*
+res_df <- map_dfr(sim_df$spec, res_fn) %>%
+  mutate(repl = sim_df$repl,
+         rho = sim_df$rho,
+         pois = sim_df$pois)
+saveRDS(res_df, "res_df.RData")
+#+END_SRC
+
+#+RESULTS: res-df
+
+* Results
+First a sanity check: how many fits failed or resulted in non-PD Hessians?
+
+#+NAME: fit-summaries
+#+BEGIN_SRC R :session *R*
+res_df %>%
+  group_by(pois, rho) %>%
+  summarize(nofit  = sum(is.na(pdhess)),
+            pdhess = sum(!is.na(pdhess) & pdhess)) %>%
+  ungroup() %>%
+  mutate(notpd = n_repl - nofit - pdhess,
+         link = ifelse(pois, "Poisson", "logit"),
+         proc_corr = factor(rho)) %>%
+  select(link, proc_corr, nofit, pdhess, notpd)
+#+END_SRC
+
+#+RESULTS: fit-summaries
+| logit   |   0 | 1 | 13 | 6 |
+| logit   | 0.8 | 5 |  9 | 6 |
+| Poisson |   0 | 2 | 17 | 1 |
+| Poisson | 0.8 | 1 | 12 | 7 |
+
+Now look at the relationship between PDness of the fitted Hessian, EM link
+function, and correlation between processes.
+
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/fixcond.svg :width 7.5 :height 5
+res_df %>%
+  filter(!is.na(pdhess)) %>%
+  mutate(link = ifelse(pois, "Poisson", "logit"),
+         proc_corr = rho) %>%
+  ggplot(aes(x = pdhess, y = fixed_cond, color = factor(rho))) +
+  geom_jitter(width = 0.1) +
+  scale_y_log10(n.breaks = 10) +
+  facet_wrap(~ link) +
+  labs(title = "Fixed-effect parameter Hessian condition number",
+       x = "Positive definite Hessian", y = "Condition number",
+       color = "Process corr")
+#+END_SRC
+
+#+RESULTS:
+[[file:figs/fixcond.svg]]
+
+It is clear that non-PD Hessians are the result of poorly conditioned Hessians.
+The most non-PD Hessians occur with correlated spatial processes fit under the
+Poisson link. Intersting to note the poorly conditioned but still PD Hessian
+from an uncorrelated logit-link fit. Also interesting is that correlation
+appears to slightly reduce the condition number under the logit-link but increase
+it under the Poisson link. Hard to say if this means anything with so few
+replicates however.
+
+** Fixed-effect parameters
+First extract the fitted values from the successful fits, then create data
+frames with the generative values. Note that generative values for the Poisson
+link are not necessarily meaningful. You wouldn't necessarily expect that
+marginal spatial variance would be equal for positive catch rate and weight per
+group.
+
+#+NAME: fixpar-df
+#+BEGIN_SRC R :session *R*
+fixpar_df <- res_df %>%
+  filter(!is.na(pdhess)) %>%
+  mutate(beta1 = map_dbl(par_fixed, pluck, "beta1"),
+         beta2 = map_dbl(par_fixed, pluck, "beta2"),
+         log_kappa1 = map_dbl(par_fixed, ~ log(exp(pluck(., 3)))),
+         log_kappa2 = map_dbl(par_fixed, ~ log(exp(pluck(., 4)))),
+         log_tau1 = map_dbl(par_fixed, ~ log(exp(pluck(., 5)))),
+         log_tau2 = map_dbl(par_fixed, ~ log(exp(pluck(., 6)))),
+         sigma = map_dbl(par_fixed, ~ exp(pluck(., "log_sigma"))))%>%
+  select(repl, rho, pois, pdhess, beta1, beta2, log_kappa1, log_kappa2,
+         log_tau1, log_tau2, sigma)
+
+logit_truefix <- tribble(~par,          ~ val,
+                        "beta1",        0.5,
+                        "beta2",       -0.5,
+                        "log_tau1",    log(pars_tau(1^2, 20)),
+                        "log_tau2",    log(pars_tau(0.2^2, 20)),
+                        "log_kappa1",  log(pars_kappa(20)),
+                        "log_kappa2",  log(pars_kappa(20)),
+                        "sigma",        0.75)
+
+pois_truefix <- logit_truefix
+## Convert beta1 and beta2 to Poisson link
+pois_truefix$val[1:2] <- c(
+  log(-log(1 - plogis(logit_truefix$val[1]))),
+  logit_truefix$val[2] - log(-log(1 - plogis(logit_truefix$val[1]))) + log(plogis(logit_truefix$val[1])))
+#+END_SRC
+
+#+RESULTS: fixpar-df
+| -0.0262649392637466 |
+|   -0.94781204491636 |
+
+Now we want to check for any relationships between parameter values and PDness
+of the Hessian. First, we'll look at the logit-link EM results.
+
+#+NAME: logitlink-pars
+#+BEGIN_SRC R :session *R* :results graphics file :file logitlink.svg :width 7.5 :height 5
+fixpar_df %>%
+  gather(key = "par", value = "val", -repl, -rho, -pois, -pdhess) %>%
+  filter(!pois) %>%
+  mutate(rho = factor(rho)) %>%
+ggplot(aes(x = pdhess, y = val, color = rho)) +
+  geom_hline(aes(yintercept = val), data = logit_truefix) +
+  geom_jitter(width = 0.1, height = 0) +
+  facet_wrap(~ par, scales = "free") +
+  labs(title = "Logit-link EM", x = "Positive-definite Hessian", y = "",
+       color = "Process correlation")
+#+END_SRC
+
+#+RESULTS: logitlink-pars
+[[file:logitlink.svg]]
+
+We see that the fits are capturing most of the generative values, even when
+the Hessian is non-PD. This is promising. The exception here is ~kappa2~, which
+tend to be larger when the Hessian is non-PD. The outlier here is likely the
+same point we saw above with a PD Hessian but large condition number.
+
+#+NAME: poislink-pars
+#+BEGIN_SRC R :session *R* :results graphics file :file poislink.svg :width 7.5 :height 5
+fixpar_df %>%
+  gather(key = "par", value = "val", -repl, -rho, -pois, -pdhess) %>%
+  filter(pois) %>%
+  mutate(rho = factor(rho)) %>%
+ggplot(aes(x = pdhess, y = val, color = rho)) +
+  geom_hline(aes(yintercept = val), data = pois_truefix) +
+  geom_jitter(width = 0.1, height = 0) +
+  facet_wrap(~ par, scales = "free") +
+  labs(title = "Poisson-link EM", x = "Positive-definite Hessian", y = "",
+       color = "Process correlation")
+#+END_SRC
+
+#+RESULTS: poislink-pars
+[[file:poislink.svg]]
+
+Similar results here, though as noted above the generative values don't have as
+much meaning. Again larger ~kappa2~ is associated with non-PD Hessians.
+
+#+NAME: par-condition
+#+BEGIN_SRC R :session *R* :results graphics file :file parcond.svg :width 7.5 :height 5
+fixpar_df %>%
+  left_join(select(res_df, repl, pois, rho, fixed_cond),
+            by = c("repl", "pois", "rho")) %>%
+  gather(key = "par", value = "val",
+         -repl, -pois, -rho, -pdhess, -fixed_cond) %>%
+  ggplot(aes(x = val, y = log(fixed_cond), color = pdhess)) +
+  geom_point() +
+  facet_wrap(~ par, scales = "free_x") +
+  scale_y_log10(n.breaks = 10) +
+  scale_color_discrete(h.start = 90) +
+  labs(title = "Parameter value vs. Hessian condition number",
+       x = "Parameter value", y = "Condition number",
+       color = "Pos. Def. Hessian")
+#+END_SRC
+
+#+RESULTS: par-condition
+[[file:parcond.svg]]
+
+The relationship between ~kappa2~ an condition number is even more clear here.
+
+* Discussion
+The primary issue appears to be that ~kappa2~ is getting too large. Even
+moderately large values result in infeasibly-short correlation ranges. Next step
+is to try bounding both ~kappa~ parameters. Minimum should be something like 2x
+the longest mesh segment. This is shorter than INLA folks would recommend, but
+hitting this bound would hopefully indicate that the mesh is too coarse. The
+maximum should be around the longest distance within the domain (so 100 or 141
+ish here).

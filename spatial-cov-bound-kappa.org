@@ -1,0 +1,362 @@
+#+TITLE: Spatial Cov Bound Kappa
+
+* Setup
+Building off yesterday's work, start by loading the setup and functions used
+there.
+
+#+CALL: spatial-cov-par-explorations.org:setup[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:pre-spatial[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:fishing-locs[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:sim-omega[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:sim-fun[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:sim-and-prep[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:make-obj[:session *R* :results silent]
+
+** Modified fitting function
+Rather than re-use the fitting functions, we need to include bounds for each
+=kappa= in the ~optim~ calls. The minimum value of =kappa= is constrained by the
+domain size. For a 100×100 domain the maximum distance between observations is
+src_R[:session *R*]{100 * sqrt(2)} {{{results(=141.42135623731=)}}}. The upper
+bound uses a correlation distance of 10 because the maximum edge of the inner
+mesh is set to 5, and the recommendation is for this to be 2-3× the correlation
+distance. In a real-data scenario where the correlation distance is unknown,
+hitting this bound would indicate that the mesh should be finer.
+
+#+NAME: kappa-bounds
+#+BEGIN_SRC R :session *R*
+par_bounds <- function(pars) {
+  nms <- names(pars)
+  lb <- ifelse(grepl("kappa", nms), log(pars_kappa(100 * sqrt(2))), -Inf)
+  ub <- ifelse(grepl("kappa", nms), log(pars_kappa(10)), Inf)
+  list(lb = lb, ub = ub)
+}
+#+END_SRC
+
+#+RESULTS: kappa-bounds
+
+#+NAME: fit-function-bounded
+#+BEGIN_SRC R :session *R*
+fit_obj_bounded <- function(obj) {
+  bounds <- par_bounds(obj$par)
+  fit <- optim(obj$par, obj$fn, obj$gr, method = "L-BFGS-B",
+               lower = bounds$lb, upper = bounds$ub)
+  fit <- optim(fit$par, obj$fn, obj$gr, method = "L-BFGS-B",
+               lower = bounds$lb, upper = bounds$ub)
+  sdr <- sdreport(obj, getJointPrecision = TRUE)
+
+  res <- tibble_row(pdhess = sdr$pdHess,
+                    joint_cond = kappa(sdr$jointPrecision),
+                    fixed_cond = kappa(sdr$cov.fixed),
+                    par_fixed = list(sdr$par.fixed),
+                    outer_mgc = max(sdr$gradient.fixed),
+                    par_random = list(sdr$par.random))
+}
+#+END_SRC
+
+#+RESULTS: fit-function-bounded
+
+Need to use the ~fit_obj_bounded~ function instead of ~fit_obj~, so redefine
+~res_fn~ here.
+
+#+NAME: safe-fit-function
+#+BEGIN_SRC R :session *R*
+res_fn <- function(spec){
+  tryCatch({
+    obj <- make_obj(spec, silent = TRUE)
+    fit_obj_bounded(obj)},
+    error = function(e)
+      tibble_row(pdhess = NA,
+                 joint_cond = NA,
+                 fixed_cond = NA,
+                 par_fixed = NA,
+                 outer_mgc = NA,
+                 par_random = NA))
+}
+#+END_SRC
+
+#+RESULTS: safe-fit-function
+
+** Index grid
+To check the generated spatial fields, we need a projection matrix that results
+in a nice grid of values to plot.
+
+#+NAME: index-grid
+#+BEGIN_SRC R :session *R* :results silent
+index_grid <- seq(0.5, 99.5, 1)
+index_locs <- as.matrix(expand.grid(index_grid, index_grid))
+index_proj <- inla.spde.make.A(mesh, index_locs)
+#+END_SRC
+
+* Simulation study
+
+Using the same setup as yesterday, specify the number of replicates and levels
+of correlation.
+
+#+NAME: sim-setup
+#+BEGIN_SRC R :session *R* :results silent
+n_repl <- 20
+rho <- c(0, 0.8)
+
+omega_df <- tibble(repl = seq_len(n_repl),
+                   omega_indep = map(repl, ~ new_omega_indep(q)))
+
+sim_df <- cross_df(list(pois = c(FALSE, TRUE),
+                        rho = c(0, 0.8),
+                        repl = seq_len(n_repl))) %>%
+  left_join(omega_df, by = "repl") %>%
+  mutate(spec = pmap(list(omega_indep, rho, pois),
+                     ~ new_replicate(..1, ..2, ..3)))
+#+END_SRC
+
+** Plot a selection of the spatial fields
+This is just some simple plotting code to check that the spatial fields look
+reasonable.
+
+#+NAME: omega-check-function
+#+BEGIN_SRC R :session *R* :output silent
+plot_omega <- function(omega_indep, proc_corr = 0.0) {
+  r <-  matrix(c(1, proc_corr, proc_corr, 1), nrow = 2)
+  nw_sd <- c(1, 1) # Don't rescale so that they can both be viewed on the same
+                   # scale
+  s <- diag(nw_sd) %*% r %*% diag(nw_sd)
+  Lt_nw <- chol(s)
+  omega <- omega_indep %*% Lt_nw
+  spat <- index_proj %*% omega
+  cross_df(list(s1 = index_grid,
+                s2 = index_grid,
+                proc = c("omega1", "omega2"))) %>%
+    mutate(val = as.vector(spat)) %>%
+    ggplot(aes(x = s1, y = s2, fill = val)) +
+    geom_raster() +
+    scale_fill_viridis_c(option = "E") +
+    coord_equal() +
+    facet_wrap(~ proc)
+}
+#+END_SRC
+
+#+RESULTS: omega-check-function
+
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/omega.svg :width 7.5 :height 5
+plot_omega(omega_df$omega_indep[[1]], 0)
+#+END_SRC
+
+#+RESULTS:
+[[file:figs/omega.svg]]
+
+** Fit the models
+
+#+NAME: res-df
+#+BEGIN_SRC R :session *R*
+res_df <- map_dfr(sim_df$spec, res_fn) %>%
+  mutate(repl = sim_df$repl,
+         rho = sim_df$rho,
+         pois = sim_df$pois)
+saveRDS(res_df, "res_df_bounded.RData")
+#+END_SRC
+
+#+RESULTS: res-df
+
+
+* Results
+First a sanity check: how many fits failed or resulted in non-PD Hessians?
+
+#+NAME: fit-summaries
+#+BEGIN_SRC R :session *R*
+res_df %>%
+  group_by(pois, rho) %>%
+  summarize(nofit  = sum(is.na(pdhess)),
+            pdhess = sum(!is.na(pdhess) & pdhess)) %>%
+  ungroup() %>%
+  mutate(notpd = n_repl - nofit - pdhess,
+         link = ifelse(pois, "Poisson", "logit"),
+         proc_corr = factor(rho)) %>%
+  select(link, proc_corr, nofit, pdhess, notpd)
+#+END_SRC
+
+#+RESULTS: fit-summaries
+| logit   |   0 | 0 | 20 | 0 |
+| logit   | 0.8 | 0 | 19 | 1 |
+| Poisson |   0 | 0 | 20 | 0 |
+| Poisson | 0.8 | 0 | 16 | 4 |
+
+Much improved! No failed fits, and only 5 non-PD Hessians, both where there was
+correlation between the spatial processes.
+
+Now look at the relationship between PDness of the fitted Hessian, EM link
+function, and correlation between processes.
+
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/fixcond_bounded.svg :width 7.5 :height 5
+res_df %>%
+  filter(!is.na(pdhess)) %>%
+  mutate(link = ifelse(pois, "Poisson", "logit"),
+         proc_corr = rho) %>%
+  ggplot(aes(x = pdhess, y = fixed_cond, color = factor(rho))) +
+  geom_jitter(width = 0.1) +
+  scale_y_log10(n.breaks = 10) +
+  facet_wrap(~ link) +
+  labs(title = "Fixed-effect parameter Hessian condition number",
+       x = "Positive definite Hessian", y = "Condition number",
+       color = "Process corr")
+#+END_SRC
+
+#+RESULTS:
+[[file:figs/fixcond_bounded.svg]]
+
+Similar to last time. Interesting to note:
+- Still have one PD Hessian that is ill-conditioned (worse than any of the
+  non-PD Hessians!).
+- While the condition number of the logit-link fits doesn't appear to be
+  affected by correlation between the spatial processes, it /does/ appear to
+  increase the condition number under the Poisson-link model.
+
+** Fixed-effect parameters
+First extract the fitted values from the successful fits, then create data
+frames with the generative values. Note that generative values for the Poisson
+link are not necessarily meaningful. You wouldn't necessarily expect that
+marginal spatial variance would be equal for positive catch rate and weight per
+group.
+
+#+NAME: fixpar-df
+#+BEGIN_SRC R :session *R*
+fixpar_df <- res_df %>%
+  filter(!is.na(pdhess)) %>%
+  mutate(beta1 = map_dbl(par_fixed, pluck, "beta1"),
+         beta2 = map_dbl(par_fixed, pluck, "beta2"),
+         log_kappa1 = map_dbl(par_fixed, ~ log(exp(pluck(., 3)))),
+         log_kappa2 = map_dbl(par_fixed, ~ log(exp(pluck(., 4)))),
+         log_tau1 = map_dbl(par_fixed, ~ log(exp(pluck(., 5)))),
+         log_tau2 = map_dbl(par_fixed, ~ log(exp(pluck(., 6)))),
+         sigma = map_dbl(par_fixed, ~ exp(pluck(., "log_sigma"))))%>%
+  select(repl, rho, pois, pdhess, beta1, beta2, log_kappa1, log_kappa2,
+         log_tau1, log_tau2, sigma)
+
+logit_truefix <- tribble(~par,          ~ val,
+                        "beta1",        0.5,
+                        "beta2",       -0.5,
+                        "log_kappa1",  log(pars_kappa(20)),
+                        "log_kappa2",  log(pars_kappa(20)),
+                        "log_tau1",    log(pars_tau(1^2, 20)),
+                        "log_tau2",    log(pars_tau(0.2^2, 20)),
+                        "sigma",        0.75) %>%
+  mutate(lb = par_bounds(res_df$par_fixed[[1]])$lb,
+         ub = par_bounds(res_df$par_fixed[[1]])$ub)
+
+pois_truefix <- logit_truefix
+## Convert beta1 and beta2 to Poisson link
+pois_truefix$val[1:2] <- c(
+  log(-log(1 - plogis(logit_truefix$val[1]))),
+  logit_truefix$val[2] - log(-log(1 - plogis(logit_truefix$val[1]))) + log(plogis(logit_truefix$val[1])))
+#+END_SRC
+
+#+RESULTS: fixpar-df
+| -0.0262649392637466 |
+|   -0.94781204491636 |
+
+Now we want to check for any relationships between parameter values and PDness
+of the Hessian. First, we'll look at the logit-link EM results.
+
+#+NAME: logitlink-pars
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/logitlink_bounded.svg :width 7.5 :height 5
+fixpar_df %>%
+  gather(key = "par", value = "val", -repl, -rho, -pois, -pdhess) %>%
+  filter(!pois) %>%
+  mutate(rho = factor(rho)) %>%
+ggplot(aes(x = pdhess, y = val, color = rho)) +
+  geom_hline(aes(yintercept = val), data = logit_truefix) +
+  geom_hline(aes(yintercept = lb), linetype = 2, data = logit_truefix) +
+  geom_hline(aes(yintercept = ub), linetype = 2, data = logit_truefix) +
+  geom_jitter(width = 0.1, height = 0) +
+  facet_wrap(~ par, scales = "free") +
+  labs(title = "Logit-link EM", x = "Positive-definite Hessian", y = "",
+       color = "Process correlation")
+#+END_SRC
+
+#+RESULTS: logitlink-pars
+[[file:figs/logitlink_bounded.svg]]
+
+#+NAME: poislink-pars
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/poislink_bounded.svg :width 7.5 :height 5
+fixpar_df %>%
+  gather(key = "par", value = "val", -repl, -rho, -pois, -pdhess) %>%
+  filter(pois) %>%
+  mutate(rho = factor(rho)) %>%
+ggplot(aes(x = pdhess, y = val, color = rho)) +
+  geom_hline(aes(yintercept = val), data = pois_truefix) +
+  geom_hline(aes(yintercept = lb), linetype = 2, data = pois_truefix) +
+  geom_hline(aes(yintercept = ub), linetype = 2, data = pois_truefix) +
+  geom_jitter(width = 0.1, height = 0) +
+  facet_wrap(~ par, scales = "free") +
+  labs(title = "Poisson-link EM", x = "Positive-definite Hessian", y = "",
+       color = "Process correlation")
+#+END_SRC
+
+#+RESULTS: poislink-pars
+[[file:figs/poislink_bounded.svg]]
+
+#+NAME: par-condition
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/parcond.svg :width 7.5 :height 5
+fixpar_df %>%
+  left_join(select(res_df, repl, pois, rho, fixed_cond),
+            by = c("repl", "pois", "rho")) %>%
+  gather(key = "par", value = "val",
+         -repl, -pois, -rho, -pdhess, -fixed_cond) %>%
+  ggplot(aes(x = val, y = fixed_cond, color = pdhess)) +
+  geom_point() +
+  facet_wrap(~ par, scales = "free_x") +
+  scale_y_log10(n.breaks = 5) +
+  scale_color_discrete(h.start = 90) +
+  labs(title = "Parameter value vs. Hessian condition number",
+       x = "Parameter value", y = "Condition number",
+       color = "Pos. Def. Hessian")
+#+END_SRC
+
+#+RESULTS: par-condition
+[[file:figs/parcond.svg]]
+
+** Hitting bounds
+The plots above indicate that there may be issues with the =kappa= parameters
+hitting the upper bound. This is the case for most of the non-PD Hessian fits,
+but some of the PD Hessian fits appear to be very close, if not at, the bound.
+
+#+BEGIN_SRC R :session *R* :results silent
+bounds <- par_bounds(res_df$par_fixed[[1]])
+kappa_bounds_df <- fixpar_df %>%
+  select(repl, rho, pois, pdhess, log_kappa1, log_kappa2) %>%
+  pivot_longer(cols = starts_with("log_kappa"),
+               names_to = "par") %>%
+  mutate(lb = bounds$lb[3],
+         ub = bounds$ub[3],
+         lb_diff = value - lb,
+         ub_diff = ub - value,
+         hits_bound = (lb_diff == 0 ) | (ub_diff == 0)) %>%
+  select(-value, -lb, -ub)
+#+END_SRC
+
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/kappa_bounds_hist.svg :width 7.5 :height 5
+ggplot(kappa_bounds_df, aes(x = ub_diff, fill = factor(rho))) +
+  geom_histogram(bins = 20, position = "dodge") +
+  geom_vline(xintercept = c(bounds$ub[3] - bounds$lb[3]), linetype = 2) +
+  facet_grid(par ~ pois) +
+  geom_rug(aes(color = factor(pdhess))) +
+  scale_color_viridis_d(option = "B")
+#+END_SRC
+
+#+RESULTS:
+[[file:figs/kappa_bounds_hist.svg]]
+
+So 10 of the fits hit the bound for =kappa2= (none hit the =kappa1= bound).
+
+#+BEGIN_SRC R :session *R* :results graphics file :file figs/fixpar_pairs.svg :width 7.5 :height 7.5
+fixpar_df %>% select(-repl, -rho, -pois, -pdhess) %>% pairs()
+#+END_SRC
+
+#+RESULTS:
+[[file:figs/fixpar_pairs.svg]]
+
+Strongest relationship here appears to be between =log_kappa2= and =log_tau2=.
+Not super surprising because =kappa2= is the most problematic parameter, with
+=tau2= causing issues once =kappa2= is bounded.
+
+Strategies for getting "unstuck" from the boundary?
+- Test after a fit. If it is at the bound, reset just the offending parameter
+  and refit.

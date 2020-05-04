@@ -1,0 +1,43 @@
+#+TITLE: Simple Om Spatq
+
+* Setup
+
+#+NAME: setup
+#+BEGIN_SRC R :session *R*
+library(tidyverse)
+library(INLA)
+library(TMB)
+devtools::load_all("~/src/spatq", helpers = FALSE)
+
+source("97_debug_fns.R")
+
+set.seed(12345)
+
+n_obs <- 2000
+#+END_SRC
+
+#+RESULTS: setup
+: 2000
+
+#+CALL: spatial-cov-par-explorations.org:pre-spatial[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:fishing-locs[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:sim-omega[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:sim-fun[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:sim-and-prep[:session *R* :results silent]
+#+CALL: spatial-cov-par-explorations.org:make-obj[:session *R* :results silent]
+#+CALL: spatial-cov-bound-kappa.org:kappa-bounds[:session *R* :results silent]
+#+CALL: spatial-cov-bound-kappa.org:index-grid[:session *R* :results silent]
+
+** Simulate data
+#+BEGIN_SRC R :session *R*
+omega_indep <- new_omega_indep(q)
+spec <- new_replicate(omega_indep, 0, TRUE)
+obj <- MakeADFun(data = spec$data,
+                 parameters = spec$pars,
+                 map = spec$map,
+                 random = spec$rand,
+                 silent = FALSE,
+                 DLL = "spatq")
+#+END_SRC
+
+#+RESULTS:

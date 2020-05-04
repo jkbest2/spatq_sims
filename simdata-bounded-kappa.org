@@ -1,0 +1,90 @@
+#+TITLE: Simdata Bounded Kappa
+#+PROPERTY: header-args:R :session *R-sdk*
+
+* Setup
+#+BEGIN_SRC R
+library(tidyverse)
+devtools::load_all("~/src/spatq", helpers = FALSE)
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC R
+obj <- make_sim_adfun(1, "pref", spec_estd = specify_estimated(omega = TRUE))
+#+END_SRC
+
+#+BEGIN_SRC R
+kappa_idx <- grep("kappa", names(obj$par))
+## Use range of 141 for lower bound on kappa
+lower_kappa <- log(pars_kappa(100 * sqrt(2)))
+## Use 10 as upper bound (limited by mesh)
+upper_kappa <- log(pars_kappa(10))
+lower <- rep_along(obj$par, -Inf)
+lower[kappa_idx] <- lower_kappa
+upper <- rep_along(obj$par, Inf)
+upper[kappa_idx] <- upper_kappa
+#+END_SRC
+
+#+RESULTS:
+: -1.26286432215413
+
+#+BEGIN_SRC R
+fit <- optim(obj$par, obj$fn, obj$gr, method = "L-BFGS-B",
+             lower = lower, upper = upper)
+sdr <- sdreport(obj)
+#+END_SRC
+
+#+RESULTS:
+
+Not promising. Kappa for the weight per group spatial process hits the bound and
+the Hessian is non-PD.
+
+Restricting the lower bound on the kappa parameters to a range of 100,
+
+#+BEGIN_SRC R
+kappa_idx <- grep("kappa", names(obj$par))
+## Use range of 141 for lower bound on kappa
+lower_kappa <- log(pars_kappa(100))
+## Use 10 as upper bound (limited by mesh)
+upper_kappa <- log(pars_kappa(10))
+lower <- rep_along(obj$par, -Inf)
+lower[kappa_idx] <- lower_kappa
+upper <- rep_along(obj$par, Inf)
+upper[kappa_idx] <- upper_kappa
+#+END_SRC
+
+#+RESULTS:
+: -1.26286432215413
+
+#+BEGIN_SRC R
+fit <- optim(obj$par, obj$fn, obj$gr, method = "L-BFGS-B",
+             lower = lower, upper = upper)
+sdr <- sdreport_spatq(obj)
+#+END_SRC
+
+#+RESULTS:
+
+Still no dice.
+
+#+BEGIN_SRC R
+kappa_idx <- grep("kappa", names(obj$par))
+## Use range of 141 for lower bound on kappa
+lower_kappa <- log(pars_kappa(50))
+## Use 10 as upper bound (limited by mesh)
+upper_kappa <- log(pars_kappa(10))
+lower <- rep_along(obj$par, -Inf)
+lower[kappa_idx] <- lower_kappa
+upper <- rep_along(obj$par, Inf)
+upper[kappa_idx] <- upper_kappa
+#+END_SRC
+
+#+RESULTS:
+: -1.26286432215413
+
+#+BEGIN_SRC R
+fit <- optim(obj$par, obj$fn, obj$gr, method = "L-BFGS-B",
+             lower = lower, upper = upper)
+sdr <- sdreport_spatq(obj)
+#+END_SRC
+
+#+RESULTS:
