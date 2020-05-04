@@ -1,7 +1,7 @@
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 FisherySim = "c2a90378-fa76-5799-9c4c-bbfd1330d11a"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 SpatQSims = "baf29d45-b477-4558-8186-4051bce8e0df"
 TweedieDistributions = "074c098c-c2ce-40ce-9d8c-a479c1fc98cf"

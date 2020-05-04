@@ -3,3 +3,6 @@
 coordref.csv
 /results*
 *.Rdata
+/*.o
+/*.so
+/*.RData
