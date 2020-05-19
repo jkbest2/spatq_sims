@@ -11,18 +11,18 @@ dyn.load(dynlib("src/spatq_simplified"))
 
 estd <- specify_estimated(omega = list(
                             omega_n = list(
-                              log_kappa = FALSE,
-                              log_tau = FALSE
+                              log_kappa = TRUE,
+                              log_tau = TRUE
                             ),
                             omega_w = list(
                               log_kappa = TRUE,
-                              log_tau = FALSE
+                              log_tau = TRUE
                             )
                           ), lambda = TRUE)
 
 repl <- 1
 scen <- "pref"
-## Code from `prepare_sim_adfun`
+## Code from `make_sim_adfun`
 catch_df <- read_catch(repl, scen)
 truepop_df <- read_popstate(repl, scen)
 index_df <- create_index_df(step = 5, T = attr(catch_df, "T"))
@@ -59,13 +59,13 @@ if (!data$norm_flag) {
   obj <- TMB::normalize(obj, flag = "incl_data", value = FALSE)
 }
 if (length(random > 0)) {
-  ## TMB::runSymbolicAnalysis(obj)
+  TMB::runSymbolicAnalysis(obj)
 }
 
-fit <- fit_spatq(obj)
-fit <- fit_spatq(obj, fit)
-rep <- report_spatq(obj)
-sdr <- sdreport_spatq(obj)
+fit3 <- fit_spatq(obj, fit)
+fit3 <- fit_spatq(obj, fit3)
+rep3 <- report_spatq(obj)
+sdr3 <- sdreport_spatq(obj)
 
 index_est <- rescale_index(sdr$value)
 index_sd <- sdr$sd / attr(index_est, "scale")

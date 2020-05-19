@@ -4,7 +4,7 @@ library(TMB)
 devtools::load_all("~/src/spatq", helpers = FALSE)
 
 compile("src/dumb.cpp")
-dyn.load(dynlib("dumb"))
+dyn.load(dynlib("src/dumb"))
 
 source("97_debug_fns.R")
 
@@ -147,13 +147,13 @@ res_fn <- function(spec){
                  par_random = NA))
 }
 
-n_repl <- 20
+n_repl <- 1
 
 set.seed(666)
 omega_df <- tibble(repl = seq_len(n_repl),
                    omega_indep = map(repl, ~ new_omega_indep(q)))
 sim_df <- cross_df(list(pois = c(FALSE, TRUE),
-                        rho = c(0, 0.8),
+                        rho = c(0),
                         repl = seq_len(n_repl))) %>%
   left_join(omega_df, by = "repl") %>%
   mutate(spec = pmap(list(omega_indep, rho, pois),

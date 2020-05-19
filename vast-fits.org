@@ -5,11 +5,11 @@
 
 #+BEGIN_SRC R :session *R-vast*
 library(tidyverse)
-library(VAST)
-library(FishStatsUtils)
-## devtools::load_all("~/src/FishStatsUtils", helpers = FALSE, export_all = FALSE)
-## devtools::load_all("~/src/VAST", helpers = FALSE, export_all = FALSE)
-## devtools::load_all("~/src/spatq", helpers = FALSE)
+## library(VAST)
+## library(FishStatsUtils)
+devtools::load_all("~/src/FishStatsUtils", helpers = FALSE, export_all = FALSE)
+devtools::load_all("~/src/VAST", helpers = FALSE, export_all = FALSE)
+devtools::load_all("~/src/spatq", helpers = FALSE)
 #+END_SRC
 
 #+RESULTS:
@@ -110,7 +110,7 @@ vast_model <- make_model(TmbData = vast_data,
 
 #+BEGIN_SRC R :session *R-vast*
 vast_fit <- optim(vast_model$Obj$par, vast_model$Obj$fn, vast_model$Obj$gr,
-                  method = "L-BFGS-B")
+                  method = "BFGS")
 vast_sdr <- sdreport(vast_model$Obj)
 #+END_SRC
 

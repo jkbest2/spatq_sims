@@ -4,7 +4,7 @@ library(TMB)
 devtools::load_all("~/src/spatq", helpers = FALSE)
 
 compile("src/dumb.cpp")
-dyn.load(dynlib("dumb"))
+dyn.load(dynlib("src/dumb"))
 
 source("97_debug_fns.R")
 
@@ -43,7 +43,7 @@ kappa <- pars_kappa(rho)
 
 q <- tau^2 * (kappa^4 * fem$M0 + 2 * kappa^2 * fem$M1 + fem$M2)
 
-n_repl = 20
+n_repl = 1
 beta1 <- 0.5
 beta2 <- -0.5
 nw_sd <- c(1, 0.2)

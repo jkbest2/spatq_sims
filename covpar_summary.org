@@ -1,0 +1,20 @@
+#+TITLE: Problems estimating covariance parameters
+
+* Original state
+Catch biomass is zero-inflated with positive catch log-normally distributed. The
+Poisson link relates the group density and weight per group processes to the
+encounter probability and positive catch rate. Each linear predictor consists of
+up to eight components (not all of which are necessarily used) including fixed
+effects, random (iid normal) effects, spatial effects, and spatiotemporal
+effects. These are all available for either abundance or catchability.
+Catchability spatial and spatiotemporal effects only apply to observations from
+the fishery-dependent fleet.
+
+
+I'm having trouble getting my TMB model to estimate covariance parameters for
+spatial random effects. I consistently get non-positive definite Hessians when I
+try to estimate these parameters (=log_kappa= and =log_tau=). For now I am working
+with yearly fixed effects and a spatial abundance component for group density
+and weight per group using the Poisson link. Fitting the same data set with VAST
+/did/ find a set of parameters with a positive definite Hessian, but oddly the
+same optimum was not found every time.

@@ -19,8 +19,8 @@ simplify_data <- function(data) {
 
 simplify_pars <- function(pars) {
   pars <- pars[simple_pars()]
-  pars$log_kappa <- pars$log_kappa[1:2]
-  pars$log_tau <- pars$log_tau[1:2]
+  pars$log_kappa <- pars$log_kappa[1:4]
+  pars$log_tau <- pars$log_tau[1:4]
   return(pars)
 }
 

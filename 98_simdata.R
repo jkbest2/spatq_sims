@@ -51,7 +51,7 @@ omega2 <- as.vector(omega[, 2])
 ## Index grid
 index_grid <- seq(0.5, 99.5, 1.0)
 index_df <- create_index_df(step = 1, T = n_year)
-index_proj <- inla.spde.make.A(mesh, as.matrix(index_locs[, c(2, 3)]))
+index_proj <- inla.spde.make.A(mesh, as.matrix(index_df[, c(2, 3)]))
 
 
 
@@ -139,7 +139,7 @@ map <- simplify_map(map)
 random <- simplify_random(random)
 
 data$proc_switch <- simple_proc_switch(random)
-data$norm_flag <- FALSE
+data$norm_flag <- TRUE
 
 obj <- MakeADFun(
   data = data,
@@ -159,7 +159,7 @@ if (length(random > 0)) {
   TMB::runSymbolicAnalysis(obj)
 }
 
-fit <- fit_spatq(obj)
-fit <- fit_spatq(obj, fit)
-rep <- report_spatq(obj)
-sdr <- sdreport_spatq(obj)
+fit2 <- fit_spatq(obj)
+fit2 <- fit_spatq(obj, fit)
+rep2 <- report_spatq(obj)
+sdr2 <- sdreport_spatq(obj)
