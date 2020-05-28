@@ -1,19 +1,21 @@
 library(spatq)
 library(tidyverse)
 
-specify_fits <- function(repl = 1:100,
-                         data = c("all", "indep"),
+n_repl <- 50
+
+specify_fits <- function(repl = seq_len(n_repl),
+                         estmod = c("spatq", "all", "indep"),
                          opmod = "combo",
                          root = "results") {
   if (!file.exists(root)) dir.create(root)
-  df <- cross_df(list(data = data, opmod = opmod, repl = repl)) %>%
+  df <- cross_df(list(estmod = estmod, opmod = opmod, repl = repl)) %>%
     mutate(repl_str = str_pad(repl, 2, pad = 0),
            Rdata = file.path(root, paste0(repl_str, "_", opmod, "_",
-                                          data, ".Rdata")),
+                                          estmod, ".Rdata")),
            index = file.path(root, paste0(repl_str, "_", opmod,
-                                          "_", data, "_index.csv")),
-           sub_df = map(data, specify_subset),
-           map_pars = map(data, specify_map_pars))
+                                          "_", estmod, "_index.csv")),
+           sub_df = map(estmod, specify_subset),
+           estd = map(estmod, estmod_pars))
   df
 }
 
@@ -24,34 +26,40 @@ fits_todo <- function(fit_spec, result_root = "results") {
 
 specify_subset <- function(estmod) {
   sub_df <- switch(estmod,
+                   spatq = NULL,
                    all = NULL,
                    indep = data.frame(vessel_idx = 2, n = 0))
   sub_df
 }
 
-specify_map_pars <- function(estmod) {
+## Specify which parameters to estimate for each estimation model; don't
+## estimate catchability parameters if using a single survey vessel.
+estmod_pars <- function(estmod) {
   switch(estmod,
-         all = c(
-           "gamma_n", "gamma_w"
-           ## ,"omega_n", "omega_w"
-          , "epsilon1_n", "epsilon1_w"
-          , "eta_n", "eta_w"
-           ## ,"phi_n", "phi_w"
-          , "psi1_n", "psi1_w"
-           ## ,"log_tau"
-          , "log_kappa"
-         ),
-         indep = c(
-           "gamma_n", "gamma_w"
-           ## , "omega_n", "omega_w"
-          , "epsilon1_n", "epsilon1_w"
-          , "lambda_n", "lambda_w"
-          , "eta_n", "eta_w"
-          , "phi_n", "phi_w"
-          , "psi1_n", "psi1_w"
-           ## , "log_tau"
-         , "log_kappa"
-         ))
+         spatq = specify_estimated(beta = TRUE,
+                                   gamma = FALSE,
+                                   omega = TRUE,
+                                   epsilon = TRUE,
+                                   lambda = TRUE,
+                                   eta = FALSE,
+                                   phi = TRUE,
+                                   psi = FALSE),
+         all = specify_estimated(beta = TRUE,
+                                 gamma = FALSE,
+                                 omega = TRUE,
+                                 epsilon = TRUE,
+                                 lambda = TRUE,
+                                 eta = FALSE,
+                                 phi = FALSE,
+                                 psi = FALSE),
+         indep = specify_estimated(beta = TRUE,
+                                   gamma = FALSE,
+                                   omega = TRUE,
+                                   epsilon = TRUE,
+                                   lambda = FALSE,
+                                   eta = FALSE,
+                                   phi = FALSE,
+                                   psi = FALSE))
 }
 
 main <- function(max_T = 15) {
@@ -64,10 +72,10 @@ main <- function(max_T = 15) {
                           sub_df = spec$sub_df[[1]],
                           root_dir = ".",
                           max_T = max_T,
-                          map_pars = spec$map_pars[[1]],
+                          spec_estd = spec$estd[[1]],
                           runSymbolicAnalysis = TRUE,
                           silent = TRUE,
-                          normalize = FALSE)
+                          normalize = TRUE)
 
     fit <- fit_spatq(obj)
     fit <- fit_spatq(obj, fit)
@@ -89,7 +97,7 @@ main <- function(max_T = 15) {
     which_index <- which(names(sdr$value) == "Index")
     est_index <- tibble(repl = spec$repl,
                         opmod = spec$opmod,
-                        estmod = spec$data,
+                        estmod = spec$estmod,
                         year = 1:max_T,
                         raw_est = sdr$value[which_index],
                         index_est = rescale_index(raw_est),

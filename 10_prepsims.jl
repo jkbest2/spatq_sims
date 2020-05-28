@@ -1,4 +1,3 @@
 using SpatQSims
 
-prep_sims(5, "prep.h5", 100.0)
-
+prep_sims(50, "prep.h5", 100.0)
