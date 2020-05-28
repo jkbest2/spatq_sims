@@ -132,8 +132,10 @@ template <class Type> Type objective_function<Type>::operator()() {
   PARAMETER_VECTOR(omega_w); // N_vert
 
   // Abundance spatiotemporal effects
-  PARAMETER_MATRIX(epsilon1_n); // N_vert × N_yrs - 1
-  PARAMETER_MATRIX(epsilon1_w); // N_vert × N_yrs - 1
+  // PARAMETER_MATRIX(epsilon1_n); // N_vert × N_yrs - 1
+  // PARAMETER_MATRIX(epsilon1_w); // N_vert × N_yrs - 1
+  PARAMETER_MATRIX(epsilon_n); // N_vert × N_yrs
+  PARAMETER_MATRIX(epsilon_w); // N_vert × N_yrs
 
   // --------------------------------------------------------------------------
   // Catchability fixed effects
@@ -153,7 +155,7 @@ template <class Type> Type objective_function<Type>::operator()() {
   // Get number of observations
   int N_obs = catch_obs.size();
   // Get number of years
-  int N_yrs = epsilon1_n.cols() + 1;
+  int N_yrs = epsilon_n.cols();
   // Get number of integration locations for each index year
   int N_I = Ih.size();
   // Convert norm_flag incl_data to boolean
@@ -226,27 +228,28 @@ template <class Type> Type objective_function<Type>::operator()() {
   // Abundance spatiotemporal effects
   // ---------------------------------------------------------------------------
   // Project spatial effects from mesh nodes to observation locations
-  matrix<Type> epsilon_n(epsilon1_n.rows(), N_yrs);
-  matrix<Type> epsilon_w(epsilon1_w.rows(), N_yrs);
+  // matrix<Type> epsilon_n(epsilon1_n.rows(), N_yrs);
+  // matrix<Type> epsilon_w(epsilon1_w.rows(), N_yrs);
   vector<Type> sptemp_n(N_obs);
   vector<Type> sptemp_w(N_obs);
   vector<Type> Isptemp_n(N_I);
   vector<Type> Isptemp_w(N_I);
-  epsilon_n.setZero();
-  epsilon_w.setZero();
+  // epsilon_n.setZero();
+  // epsilon_w.setZero();
   sptemp_n.setZero();
   sptemp_w.setZero();
   Isptemp_n.setZero();
   Isptemp_w.setZero();
 
   if (proc_switch(2)) {
-    epsilon_n.leftCols(N_yrs - 1) = epsilon1_n;
-    epsilon_n.rightCols(1) = -epsilon1_n.rowwise().sum();
+    // epsilon_n.leftCols(N_yrs - 1) = epsilon1_n;
+    // epsilon_n.rightCols(1) = -epsilon1_n.rowwise().sum();
 
     sptemp_n = A_sptemp * epsilon_n.value();
+    sptemp_n *= itau(2);
 
     SparseMatrix<Type> Q_n_ep = Q_spde(spde, kappa(2));
-    SCALE_t<GMRF_t<Type>> gmrf_n_ep = SCALE(GMRF(Q_n_ep, nrmlz), itau(2));
+    GMRF_t<Type> gmrf_n_ep = GMRF(Q_n_ep, nrmlz);
 
     for (int yr = 0; yr < N_yrs; yr++) {
       jnll(2) += gmrf_n_ep(epsilon_n.col(yr));
@@ -255,15 +258,17 @@ template <class Type> Type objective_function<Type>::operator()() {
     REPORT(epsilon_n);
 
     Isptemp_n = IA_sptemp * epsilon_n.value();
+    Isptemp_n *= itau(2);
   }
   if (proc_switch(3)) {
-    epsilon_w.leftCols(N_yrs - 1) = epsilon1_w;
-    epsilon_w.rightCols(1) = -epsilon1_w.rowwise().sum();
+    // epsilon_w.leftCols(N_yrs - 1) = epsilon1_w;
+    // epsilon_w.rightCols(1) = -epsilon1_w.rowwise().sum();
 
     sptemp_w = A_sptemp * epsilon_w.value();
+    sptemp_w *= itau(3);
 
     SparseMatrix<Type> Q_w_ep = Q_spde(spde, kappa(3));
-    SCALE_t<GMRF_t<Type>> gmrf_w_ep = SCALE(GMRF(Q_w_ep, nrmlz), itau(3));
+    GMRF_t<Type> gmrf_w_ep = GMRF(Q_w_ep, nrmlz);
 
     for (int yr = 0; yr < N_yrs; yr++) {
       jnll(3) += gmrf_w_ep(epsilon_w.col(yr));
@@ -272,6 +277,7 @@ template <class Type> Type objective_function<Type>::operator()() {
     REPORT(epsilon_w);
 
     Isptemp_w = IA_sptemp * epsilon_w.value();
+    Isptemp_w *= itau(3);
   }
 
   // ===========================================================================

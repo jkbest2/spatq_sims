@@ -9,17 +9,26 @@ source("97_debug_fns.R")
 compile("src/spatq_simplified.cpp")
 dyn.load(dynlib("src/spatq_simplified"))
 
-estd <- specify_estimated(omega = list(
-                            omega_n = list(
-                              log_kappa = TRUE,
-                              log_tau = TRUE
-                            ),
-                            omega_w = list(
-                              log_kappa = TRUE,
-                              log_tau = TRUE
-                            )
-                          ), lambda = TRUE)
+## estd <- specify_estimated(omega = list(
+##                             omega_n = list(
+##                               log_kappa = TRUE,
+##                               log_tau = TRUE
+##                             ),
+##                             omega_w = list(
+##                               log_kappa = TRUE,
+##                               log_tau = TRUE
+##                             )
+##                           ), lambda = TRUE)
 
+estd <- specify_estimated(beta = TRUE,
+                          gamma = FALSE,
+                          omega = FALSE,
+                          epsilon1 = list(epsilon1_n = TRUE,
+                                          epsilon1_w = FALSE),
+                          lambda = TRUE,
+                          eta = FALSE,
+                          phi = FALSE,
+                          psi = FALSE)
 repl <- 1
 scen <- "pref"
 ## Code from `make_sim_adfun`
@@ -40,10 +49,20 @@ random <- prepare_random(map)
 data <- simplify_data(data)
 parameters <- simplify_pars(parameters)
 map <- simplify_map(map)
+names(map) <- gsub("epsilon1", "epsilon", names(map))
+## ## map$epsilon_n <- factor(rep(NA, 404 * 25))
+## map$epsilon_w <- factor(rep(NA, 404 * 25))
 random <- simplify_random(random)
 
 data$proc_switch <- simple_proc_switch(random)
 data$norm_flag <- TRUE
+data$incl_data <- FALSE
+
+parameters$epsilon1_n <- matrix(rnorm(404 * 25, 0, 0.1), nrow = 404, ncol = 25)
+parameters$epsilon1_w <- matrix(rnorm(404 * 25, 0, 0.1), nrow = 404, ncol = 25)
+names(parameters) <- gsub("epsilon1", "epsilon", names(parameters))
+## random[3:4] <- c("epsilon_n", "epsilon_w")
+random <- "epsilon_n"
 
 obj <- MakeADFun(
   data = data,
@@ -62,10 +81,10 @@ if (length(random > 0)) {
   TMB::runSymbolicAnalysis(obj)
 }
 
-fit3 <- fit_spatq(obj, fit)
-fit3 <- fit_spatq(obj, fit3)
-rep3 <- report_spatq(obj)
-sdr3 <- sdreport_spatq(obj)
+fit1 <- fit_spatq(obj)
+fit1 <- fit_spatq(obj, fit1)
+rep1 <- report_spatq(obj)
+sdr1 <- sdreport_spatq(obj)
 
 index_est <- rescale_index(sdr$value)
 index_sd <- sdr$sd / attr(index_est, "scale")

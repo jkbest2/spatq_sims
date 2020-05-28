@@ -5,7 +5,7 @@ simple_data <- function() {
 }
 
 simple_pars <- function() {
-  c("beta_n", "beta_w", "omega_n", "omega_w", "epsilon1_n", "epsilon1_w",
+  c("beta_n", "beta_w", "omega_n", "omega_w", "epsilon_n", "epsilon_w",
     "lambda_n", "lambda_w", "log_kappa", "log_tau", "log_sigma")
 }
 
@@ -41,5 +41,5 @@ simplify_random <- function(random) {
 }
 
 simple_proc_switch <- function(random) {
-  c("omega_n", "omega_w", "epsilon1_n", "epsilon1_w") %in% random
+  c("omega_n", "omega_w", "epsilon_n", "epsilon_w") %in% random
 }
