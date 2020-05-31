@@ -1,9 +1,9 @@
 library(spatq)
 library(tidyverse)
 
-n_repl <- 50
+repls <- as.numeric(commandArgs(trailingOnly = TRUE))
 
-specify_fits <- function(repl = seq_len(n_repl),
+specify_fits <- function(repl = repls[1]:repls[2],
                          estmod = c("spatq", "all", "indep"),
                          opmod = "combo",
                          root = "results") {
