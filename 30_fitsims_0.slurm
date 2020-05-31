@@ -4,8 +4,8 @@
 #SBATCH --job-name=fit_sims
 
 ## Allocations definition
-#SBATCH --account=stf-ckpt
-#SBATCH --partition=ckpt
+#SBATCH --account=stf
+#SBATCH --partition=stf
 
 ## Nodes
 #SBATCH --nodes=1

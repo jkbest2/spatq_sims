@@ -4,8 +4,8 @@
 #SBATCH --job-name=fit_sims
 
 ## Allocations definition
-#SBATCH --account=stf-ckpt
-#SBATCH --partition=ckpt
+#SBATCH --account=stf
+#SBATCH --partition=stf
 
 ## Nodes
 #SBATCH --nodes=1
@@ -17,7 +17,7 @@
 #SBATCH --cpus-per-task=28
 
 ## Walltime
-#SBATCH --time=24:00:00
+#SBATCH --time=12:00:00
 
 ## Memory per node
 #SBATCH --mem=120G
