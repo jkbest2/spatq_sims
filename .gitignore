@@ -10,3 +10,5 @@ coordref.csv
 *.so
 /figs/
 /VAST-run/
+*.png
+*.jpg
