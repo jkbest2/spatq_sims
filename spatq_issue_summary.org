@@ -1,0 +1,8 @@
+#+TITLE: Spatq issue summary
+
+* Problems
+- Can't
+** Fixed parameters
+- Hessian is full rank but two negative eigenvalues
+
+Did I just need to not be using MKL and disable the normalization trick?

@@ -63,7 +63,7 @@ index_df <- read_all_indices() %>%
 
 naive_df <- cross_df(list(opmod = "combo",
                           prop_indep = c(1, 250 / 2750),
-                          repl = factor(1:100, levels = 1:100))) %>%
+                          repl = factor(1:5, levels = 1:5))) %>%
   mutate(estmod = factor(ifelse(prop_indep < 1, "all", "indep")),
          poparray = map2(repl, opmod, read_poparray),
          index_df = map2(poparray, prop_indep,

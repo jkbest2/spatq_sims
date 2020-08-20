@@ -1,4 +1,5 @@
 library(tidyverse)
+library(colorspace)
 library(INLA)
 library(TMB)
 devtools::load_all("~/src/spatq", helpers = FALSE)
@@ -63,8 +64,10 @@ catch_locs <- tibble(year = rep(seq(1:n_year), each = n_obs),
 catch_proj <- inla.spde.make.A(mesh, as.matrix(catch_locs[c(2, 3)]))
 
 sim_catch <- function(p1, p2, catch_sigma) {
-  p_enc <- plogis(p1)
-  catch_meanlog <- p2 - catch_sigma^2 / 2
+  ## p_enc <- plogis(p1)
+  ## catch_meanlog <- p2 - catch_sigma^2 / 2
+  p_enc <- 1 - exp(-exp(p1))
+  catch_meanlog <- exp(p1) / p_enc * exp(p2) - catch_sigma^2 / 2
   rbinom(1, 1, p_enc) * rlnorm(1, catch_meanlog, catch_sigma)
 }
 
@@ -85,7 +88,7 @@ catch_df
 
 
 
-plot_flag <- FALSE
+plot_flag <- TRUE
 if (plot_flag) {
   dev.new()
   filled.contour(
@@ -163,3 +166,52 @@ fit2 <- fit_spatq(obj)
 fit2 <- fit_spatq(obj, fit)
 rep2 <- report_spatq(obj)
 sdr2 <- sdreport_spatq(obj)
+
+par_fixed2 <- gather_nvec(sdr2$par.fixed)
+par_rand2 <- gather_nvec(sdr2$par.random)
+
+spat1 <- index_proj %*% omega1
+spat1 <- array(spat1, dim = c(100, 100, 10))
+spat2 <- index_proj %*% omega2
+spat2 <- array(spat2, dim = c(100, 100, 10))
+
+spest1 <- index_proj %*% par_rand2$omega_n
+spest1 <- array(spest1, dim = c(100, 100, 10))
+spest2 <- index_proj %*% par_rand2$omega_w
+spest2 <- array(spest2, dim = c(100, 100, 10))
+
+## Compare intercepts
+dev.new()
+par(mfrow = c(2, 1))
+hist(par_fixed2$beta_n, xlim = c(0.475, 0.65))
+abline(v = 0.5, lty = 2)
+hist(par_fixed2$beta_w, xlim = c(-0.475, 0.75))
+abline(v = -0.5, lty = 2)
+
+## Compare omega values
+dev.new()
+par(mfrow = c(1, 2))
+plot(omega1, par_rand2$omega_n)
+abline(0, 1, lty = 2)
+plot(omega2, par_rand2$omega_w)
+abline(0, 1, lty = 2)
+
+## Spatial structure of differences
+spdf <- tibble(omega = c(omega1, omega2),
+               est = c(par_rand2$omega_n, par_rand2$omega_w),
+               diff = omega - est,
+               diff_cut = cut(diff, c(-Inf, -3, -2, -1.5, -1, -0.5, -0.25, 0.25, 0.5, 1, 1.5, 2, 3, Inf)),
+               par = rep(c("n", "w"), each = mesh$n),
+               x = rep(mesh$loc[, 1], 2),
+               y = rep(mesh$loc[, 2], 2))
+dev.new()
+ggplot(spdf, aes(x = x, y = y, color = diff_cut)) +
+  geom_point(size = 2) +
+  scale_color_brewer(type = "div")
+
+## Compare spatial fields
+levels <- seq(-4, 2.5, 0.5)
+dev.new()
+filled.contour(spat1[, , 1], levels = levels)
+dev.new()
+filled.contour(spest1[, , 1], levels = levels)

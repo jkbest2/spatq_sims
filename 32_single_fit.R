@@ -1,17 +1,18 @@
-## library(spatq)
-devtools::load_all("~/src/spatq", helpers = FALSE, export_all = FALSE, recompile = TRUE)
+library(spatq)
+## devtools::load_all("~/src/spatq", helpers = FALSE, export_all = FALSE,
+##                    recompile = TRUE)
 library(tidyverse)
 
 repl <- 1
 sc <- "pref"
-estd <- specify_estimated(beta     = TRUE,
-                          gamma    = FALSE,
-                          omega    = TRUE,
-                          epsilon1 = FALSE,
-                          lambda   = TRUE,
-                          eta      = FALSE,
-                          phi      = TRUE,
-                          psi1     = FALSE)
+estd <- specify_estimated(beta    = TRUE,
+                          gamma   = FALSE,
+                          omega   = TRUE,
+                          epsilon = TRUE,
+                          lambda  = TRUE,
+                          eta     = FALSE,
+                          phi     = FALSE,
+                          psi     = FALSE)
 
 obj_1pref <- make_sim_adfun(repl = repl,
                             sc = sc,

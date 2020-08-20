@@ -9,6 +9,8 @@ devtools::load_all("~/src/VAST", helpers = FALSE, export_all = FALSE)
 devtools::load_all("~/src/spatq", helpers = FALSE)
 #+END_SRC
 
+#+RESULTS:
+
 From the ~fit_model~ help example:
 
 #+BEGIN_SRC R :session *R-vastex*
@@ -22,7 +24,7 @@ settings = make_settings( n_x=50, Region=example$Region, purpose="index",
                          strata.limits=example$strata.limits )
 
 ## Run model
-fit = fit_model( "settings"=settings, "Lat_i"=example$sampling_data[,'Lat'],
+fit = fit_model("settings"=settings, "Lat_i"=example$sampling_data[,'Lat'],
                 "Lon_i"=example$sampling_data[,'Lon'], "t_i"=example$sampling_data[,'Year'],
                 "c_i"=rep(0,nrow(example$sampling_data)), "b_i"=example$sampling_data[,'Catch_KG'],
                 "a_i"=example$sampling_data[,'AreaSwept_km2'], "v_i"=example$sampling_data[,'Vessel'] )
@@ -45,7 +47,7 @@ sdr <- fit$parameter_estimates$SD
 corr_fixed <- cov2cor(sdr$cov.fixed)
 cf_nad <- corr_fixed
 cf_nad[abs(cf_nad) < 0.05] <- NA
-image(cf_nad)
+image(cf_nad[rev(seq_len(nrow(cf_nad))),])
 #+END_SRC
 
 #+RESULTS:

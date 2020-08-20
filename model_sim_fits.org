@@ -1,0 +1,9 @@
+#+TITLE: Model Sim Fits
+#+PROPERTY: header-args:R :session *R-spatqsims* :tangle yes
+
+
+#+BEGIN_SRC R
+devtools::load_all("~/src/spatq")
+obj_gen <- make_sim_adfun(1, "pref")
+
+#+END_SRC
