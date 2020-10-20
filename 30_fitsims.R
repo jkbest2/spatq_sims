@@ -1,4 +1,5 @@
-library(spatq)
+## library(spatq)
+devtools::load_all("~/src/spatq", helpers = FALSE)
 library(tidyverse)
 
 repls <- as.numeric(commandArgs(trailingOnly = TRUE))
