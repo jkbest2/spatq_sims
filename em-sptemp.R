@@ -1,8 +1,8 @@
-library(tidyverse)
-library(INLA)
-library(TMB)
+## library(tidyverse)
+## library(INLA)
+## library(TMB)
 devtools::load_all("~/dev/spatq", helpers = FALSE, compile = TRUE)
-library(pbapply) # Include progress bar on sim fits
+## library(pbapply) # Include progress bar on sim fits
 
 ### Useful functions
 replace_with_sim <- function(sim, old) {
@@ -38,32 +38,27 @@ repl <- 1
 sc <- "spat"
 root_dir <- "."
 sub_df <- data.frame(vessel_idx = 2, n = 1000)
-max_T <- 5
+max_T <- 3
 
 estd_sim <- specify_estimated(beta = TRUE, gamma = FALSE,
-                              omega = TRUE, epsilon = TRUE,
+                              omega = TRUE, epsilon = FALSE,
                               lambda = TRUE, eta = FALSE,
                               phi = TRUE, psi = FALSE,
-                              kappa_map = factor(c(1, 2, 1, 2, 1, 2, NA, NA)))
-prior <- grf_pcprior(rho0 = rep(10, 8),
-                     alpha_rho = rep(0.05, 8),
-                     use_prior = c(TRUE, FALSE))
+                              kappa_map = factor(c(1, 2, NA, NA, 1, 2, NA, NA)))
 setup_sim <- spatqsetup_sim(repl, sc, sub_df = sub_df,
                             max_T = max_T, index_step = 100,
-                            spec_estd = estd_sim,
-                            prior = prior)
+                            spec_estd = estd_sim)
 
 ## Initialize like this for Helmert contrasts
 setup_sim$parameters$beta_n <- c(0.5, rep(0, max_T - 1))
 setup_sim$parameters$beta_w <- c(-10, rep(0, max_T - 1))
 setup_sim$parameters$lambda_n <- 0.4
 setup_sim$parameters$lambda_w <- 1.6
-## Give spatial parameters a 60-unit range and spatiotemporal a 30-unit range
-setup_sim$parameters$log_kappa <- c(log(pars_kappa(60)), log(pars_kappa(60)),
-                                    log(pars_kappa(30)), log(pars_kappa(30)),
-                                    log(pars_kappa(60)), log(pars_kappa(60)),
-                                    log(pars_kappa(30)), log(pars_kappa(30)))
-setup_sim$parameters$log_tau <- rep(3, 8)
+setup_sim$parameters$log_kappa <- c(log(pars_kappa(50)), log(pars_kappa(50)),
+                                    log(pars_kappa(50)), log(pars_kappa(50)),
+                                    log(pars_kappa(50)), log(pars_kappa(50)),
+                                    log(pars_kappa(50)), log(pars_kappa(50)))
+setup_sim$parameters$log_tau <- rep(log(0.03), 8)
 setup_sim$parameters$log_sigma <- 0
 
 original_sim <- list(spec_estd = estd_sim,
@@ -77,7 +72,7 @@ obj_sim <- prepare_adfun(data = setup_sim$data,
                         random = setup_sim$random,
                         silent = FALSE,
                         runSymbolicAnalysis = TRUE,
-                        normalize = FALSE)
+                        normalize = TRUE)
 gen <- obj_sim$simulate()
 
 ## setup2 <- setup_sim
@@ -88,12 +83,13 @@ gen <- obj_sim$simulate()
 ## sdr2 <- sdreport_spatq(obj2, bias.correct = FALSE, getJointPrecision = FALSE)
 
 ### Set up simulation study
-n_repl <- 10
-sims <- replicate(n_repl, obj_sim$simulate(), simplify = FALSE)
-em_sims <- pblapply(sims, function(sim) {
+## n_repl <- 1
+## sims <- replicate(n_repl, obj_sim$simulate(), simplify = FALSE)
+## em_sims <- pblapply(sims, function(sim) {
+  sim <- gen
   obj <- objectify_sim(sim, original_sim,
                        replace_pars = TRUE,
-                       silent = TRUE,
+                       silent = FALSE,
                        runSymbolicAnalysis = TRUE,
                        normalize = TRUE)
   ## fit <- fit_spatq(obj)
@@ -102,7 +98,7 @@ em_sims <- pblapply(sims, function(sim) {
   sdr <- sdreport_spatq(obj)
   attr(sdr, "fit_mgc") <- attr(fit, "mgc")
   sdr
-})
+## })
 
 ### Extract results of simulation study
 pd_hess <- map_lgl(em_sims, pluck, "pdHess")
