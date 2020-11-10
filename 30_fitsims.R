@@ -7,8 +7,12 @@ repls <- as.numeric(commandArgs(trailingOnly = TRUE))
 
 ## List all possible combinations of OM/EM in given replicate range
 specify_fits <- function(repl = repls[1]:repls[2],
-                         estmod = c("surv", "spatab", "spatq"),
-                         opmod = c("combo", "pref", "spat"),
+                         estmod = c("surv",
+                                    ## "spatab",
+                                    "spatq"),
+                         opmod = c(## "combo",
+                                   "pref",
+                                   "spat"),
                          root = "results") {
   if (!file.exists(root)) dir.create(root)
 
@@ -79,8 +83,10 @@ estmod_pars <- function(estmod) {
 get_prev_em <- function(estmod) {
   switch(estmod,
          surv = NULL,
-         spatab = "surv",
-         spatq = "spatab")
+         spatab = NULL,
+         spatq = NULL)
+         ## spatab = "surv",
+         ## spatq = "spatab")
 }
 
 get_prev_fit <- function(repl, estmod, opmod, root = "results") {
@@ -114,12 +120,20 @@ main <- function(max_T = 15) {
                      silent = TRUE)
 
     optctl <- spatq_optcontrol(maxopts = 4)
-    fit <- fit_spatq(obj = obj,
-                     fit = NULL,
-                     optcontrol = optctl)
-    lpb <- gather_nvec(obj$env$last.par.best)
-    rep <- report_spatq(obj)
-    sdr <- sdreport_spatq(obj)
+    fit <- tryCatch(
+      fit_spatq(obj = obj,
+                fit = NULL,
+                optcontrol = optctl),
+      error = function(e) list(fail = TRUE))
+    lpb <- tryCatch(
+      gather_nvec(obj$env$last.par.best),
+      error = function(e) list(fail = TRUE))
+    rep <- tryCatch(
+      report_spatq(obj),
+      error = function(e) list(fail = TRUE))
+    sdr <- tryCatch(
+      sdreport_spatq(obj),
+      error = function(e) list(fail = TRUE))
 
     saveRDS(list(spec = spec, fit = fit, lpb = lpb, rep = rep, sdr = sdr),
             spec$Rdata)
@@ -131,17 +145,27 @@ main <- function(max_T = 15) {
       filter(year <= max_T) %>%
       mutate(index_true = rescale_index(raw_true)$index)
 
-    ## Organize details for estimated index
-    which_index <- which(names(sdr$value) == "Index")
-    est_index <- tibble(repl = spec$repl,
-                        opmod = spec$opmod,
-                        estmod = spec$estmod,
-                        year = 1:max_T,
-                        raw_est = sdr$value[which_index],
-                        index_est = rescale_index(raw_est)$index,
-                        sd_raw = sdr$sd[which_index],
-                        sd = rescale_index(raw_est, sd_raw)$sd)
-
+    if (!("fail" %in% names(sdr))) {
+      ## Organize details for estimated index
+      which_index <- which(names(sdr$value) == "Index")
+      est_index <- tibble(repl = spec$repl,
+                          opmod = spec$opmod,
+                          estmod = spec$estmod,
+                          year = 1:max_T,
+                          raw_est = sdr$value[which_index],
+                          index_est = rescale_index(raw_est)$index,
+                          sd_raw = sdr$sd[which_index],
+                          sd = rescale_index(raw_est, sd_raw)$sd)
+    } else {
+      est_index <- tibble(repl = spec$repl,
+                          opmod = spec$opmod,
+                          estmod = spec$estmod,
+                          year = 1:max_T,
+                          raw_est = rep(NA, max_T),
+                          index_est = rep(NA, max_T),
+                          sd_raw = rep(NA, max_T),
+                          sd = rep(NA, max_T))
+    }
     ## Join and write to CSV file
     index_df <- left_join(est_index, true_index, by = "year")
     write_csv(index_df, spec$index)
