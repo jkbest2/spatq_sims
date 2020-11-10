@@ -19,8 +19,8 @@ get_mgc <- function(fitlist) {
 }
 
 read_index_csv <- function(filename) {
-  opmods <- c("combo", "pref", "spatq")
-  estmods <- c("spatq", "all", "indep")
+  opmods <- c("combo", "pref", "spat")
+  estmods <- c("surv", "spatq", "spatab")
   read_csv(filename,
            col_types = cols(repl = col_factor(levels = 1:50),
                             opmod = col_factor(levels = opmods),
@@ -71,14 +71,44 @@ plot_index_devs <- function(index_df) {
   index_df %>%
     mutate(dev = index_est - index_true) %>%
     ggplot(aes(x = year, y = dev, color = estmod, group = repl)) +
-    geom_line(alpha = 0.2) +
+    geom_line(alpha = 0.6) +
     geom_hline(yintercept = 0, linetype = 2) +
     facet_grid(estmod ~ opmod) +
     guides(color = FALSE)
 }
 
-eval_main <- function(results_dir = "results", eval_dir = "results/evaluation") {
-  index_df <- read_all_indices(results_dir)
+plot_bias <- function(index_df) {
+  index_df %>%
+    ggplot(aes(x = index_true, y = index_est, color = estmod, group = repl)) +
+    geom_point(alpha = 0.6) +
+    geom_abline(slope = 1, intercept = 0, linetype = 2) +
+    facet_grid(estmod ~ opmod) +
+    coord_fixed() +
+    guides(color = FALSE)
+}
+
+eval_main <- function(results_dir = "results",
+                      eval_dir = "results/evaluation",
+                      pdonly = TRUE) {
+  index_df <- read_all_indices(results_dir) %>% filter(complete.cases(.))
+
+  convg_df <- map_dfr(list_Rdata(), ~ readRDS(.)$spec) %>%
+    select(estmod, opmod, repl, Rdata) %>%
+    mutate(repl = factor(repl, levels = 1:50),
+           convcode = map_dbl(Rdata, ~ readRDS(.)$fit$convergence),
+           outer_mgc = map_dbl(Rdata, ~ max(readRDS(.)$fit$grad)),
+           pdhess = map_lgl(Rdata, function(fn) {
+             pdhess <- readRDS(fn)$sdr$pdHess
+             if(is.null(pdhess)) pdhess <- FALSE
+             return(pdhess)
+           })) %>%
+    select(estmod, opmod, repl, pdhess)
+
+  if (pdonly) {
+    index_df <- left_join(index_df, convg_df,
+                          by = c("estmod", "opmod", "repl")) %>%
+      filter(pdhess)
+  }
 
   if (!file.exists(eval_dir))
     dir.create(eval_dir)
@@ -86,15 +116,18 @@ eval_main <- function(results_dir = "results", eval_dir = "results/evaluation") 
   bias_df <- evaluate_bias(index_df)
   rmse_df <- evaluate_rmse(index_df)
 
+  bias_plot <- plot_bias(index_df)
   calibration_plot <- evaluate_calibration(index_df)
   index_devs <- plot_index_devs(index_df)
 
   write_csv(bias_df, file.path(eval_dir, "bias.csv"))
   write_csv(rmse_df, file.path(eval_dir, "rmse.csv"))
+  ggsave(file.path(eval_dir, "bias_plot.pdf"), bias_plot)
   ggsave(file.path(eval_dir, "calibration.pdf"), calibration_plot)
   ggsave(file.path(eval_dir, "index_devs.pdf"), index_devs)
-  ggsave(file.path(eval_dir, "calibration.png"), width = 6, height = 4, calibration_plot)
-  ggsave(file.path(eval_dir, "index_devs.png"), width = 6, height = 4, index_devs)
+  ggsave(file.path(eval_dir, "bias_plot.png"), width = 7, height = 7, bias_plot)
+  ggsave(file.path(eval_dir, "calibration.png"), width = 7, height = 7, calibration_plot)
+  ggsave(file.path(eval_dir, "index_devs.png"), width = 7, height = 7, index_devs)
 }
 
 eval_main()
