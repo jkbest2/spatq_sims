@@ -1,0 +1,149 @@
+---
+title: November 2020 Update
+author: John Best
+date: November 5, 2020
+---
+
+# Model review
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(hdf5r)
+library(spaqtq)
+## devtools::load_all("~/dev/spatq")
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+$$\renewcommand{\vec}[1]{\boldsymbol{#1}}$$
+
+# Model review
+
+The proposed model uses a zero-inflated log-normal observation likelihood with a
+Poisson link function. The linear predictors for numbers density, $n$, and
+weight per group, $w$, are
+
+$$\log \vec{n} =
+  \vec{X}_n\vec{\beta}_n + \vec{A}_\omega\vec{\omega}_n + \vec{A}_{\epsilon}\vec{\epsilon}_n +
+  \vec{Q}_n\vec{\lambda}_n + \vec{A}_{\phi}\vec{\phi}_n + \vec{A}_{\psi}\vec{\psi}_n$$
+$$\log \vec{w} =
+  \vec{X}_w\vec{\beta}_w + \vec{A}_\omega\vec{\omega}_w + \vec{A}_{\epsilon}\vec{\epsilon}_w +
+  \vec{Q}_w\vec{\lambda}_w + \vec{A}_{\phi}\vec{\phi}_w + \vec{A}_{\psi}\vec{\psi}_w$$
+  
+Where each linear predictor may include:
+
+- $\vec{X}_{\cdot}\vec{\beta}_\cdot$: abundance fixed effects (e.g. year)
+- $\vec{A}_\omega\vec{\omega}_\cdot$: abundance spatial effects
+- $\vec{A}_{\epsilon}\vec{\epsilon}_\cdot$: abundance spatiotemporal effects
+- $\vec{Q}_\cdot\vec{\lambda}_\cdot$: catchability fixed effects (e.g. vessel/fleet)
+- $\vec{A}_{\phi}\vec{\phi}_\cdot$: catchability spatial effects
+- $\vec{A}_{\psi}\vec{\psi}_\cdot$: catchability spatiotemporal effects
+
+The spatial and spatiotemporal effects parameter vectors take multivariate
+normal distributions, each of which depends on independent parameters $\kappa$ and
+$\tau$. These parameters can be difficult to estimate. In two dimensions and
+fixing the Matérn smoothness parameter $\nu$ to $1$,
+
+$$\kappa = \frac{\sqrt{8}}{\rho}$$
+
+where $\rho$ is the distance at which correlation drops to roughly $0.1$. This
+parameter cannot be consistently estimated under in-fill asymptotics (adding
+additional observations within a fixed domain). The parameter $\tau$ on the
+other hand *can* be consistently estimated under in-fill asymptotics[^1]. For
+$\nu = 1$, $\tau$ is the ratio of the marginal standard deviation $\sigma$ to the
+correlation range,
+
+$$\tau = 4 \sqrt{2\pi} \frac{\sigma}{\rho}.$$
+
+The intuition here is that in a fixed domain, a field with short correlation
+range and small marginal variance will generate similar realizations to a field
+with long correlation range and large marginal variance. In a model that
+includes all the specified spatial and spatiotemporal effects, eight $\kappa$
+and eight $\tau$ parameters must be estimated.
+
+[^1]: Zhang. 2008. *Inconsistent estimation and asymptotically equal interpolations in model-based geostatistics*. J Am Stat Soc. [https://doi.org/10/b6ttjp](https://doi.org/10/b6ttjp)
+
+## Where was the problem?
+
+The smallest (or negative) eigenvalues of non-positive definite Hessians almost always had its largest contributions from the `log_tau` and `log_kappa` parameters 
+
+# Where was I?
+
+At the beginning of the summer:
+
+- difficulty finding positive-definite Hessians
+- 
+
+# Where am I?
+
+## Operating model
+
+```{r}
+poparray_file <- function(repl, opmod, root_dir = ".") {
+  repl_str <- str_pad(repl, width = 2, pad = 0)
+  repl_dir <- paste0("repl_", repl_str)
+  h5_file <- paste0("pop_", repl_str, ".h5")
+  file.path(root_dir, repl_dir, h5_file)
+}
+
+read_poparray <- function(repl, opmod, root_dir = ".") {
+  fn <- poparray_file(repl, opmod, root_dir)
+  file <- H5File$new(fn, mode = "r")
+  grp <- file[[opmod]]
+  pop <- grp[["popstate"]]
+  pop$read()
+}
+
+plot_pop <- function(poparray, max_T) {
+  pcol <- ceiling(sqrt(max_T))
+  par(mfrow = c(pcol, pcol), oma = c(1, 2, 1, 0), mar = c(1, 1, 1, 0))
+  pop <- poparray[, , seq_len(max_T)]
+  zlims <- c(min(pop), max(pop))
+  s <- seq(0.5, 99.5, 1)
+  for (yr in seq_len(max_T)) {
+    p <- pop[, , yr]
+    i <- signif(sum(p), 3)
+    image(s, s, p,
+          zlim = zlims,
+          xlab = "", ylab = "",
+          col = hcl.colors(12, "cividis"),
+          asp = 1, axes = FALSE,
+          main = paste0("Year: ", yr, " Index: ", i))
+  }
+}
+
+plot_pop2 <- function(repl, opmod, root_dir = ".", max_T = 15) {
+  pop <- read_poparray(repl, opmod, root_dir)
+  plot_pop(pop, max_T)
+}
+```
+
+Example population trajectories.
+
+```{r}
+plot_pop2(1, "spat")
+```
+
+```{r}
+plot_pop2(1, "pref")
+```
+
+```{r}
+plot_pop2(15, "spat")
+```
+
+```{r}
+plot_pop2(15, "pref")
+```
+
+# Where am I heading?
+
+## More spatiotemporal variation the operating model
+
+- **Abundance**: change habitat preference over time (simulating e.g. annual
+  changes).
+- **Preference**: Changing abundance patterns will change allocation of fishing
+  effort for preferentially sampled fisheries. Could also introduce manual
+  preference change, e.g. "sweeping" exploitation.
+- **Catchability**: change spatially-varying catchability over time manually.
+
