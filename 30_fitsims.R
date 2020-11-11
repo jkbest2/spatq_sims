@@ -8,7 +8,7 @@ repls <- as.numeric(commandArgs(trailingOnly = TRUE))
 ## List all possible combinations of OM/EM in given replicate range
 specify_fits <- function(repl = repls[1]:repls[2],
                          estmod = c("surv",
-                                    ## "spatab",
+                                    "spatab",
                                     "spatq"),
                          opmod = c(## "combo",
                                    "pref",
@@ -61,23 +61,34 @@ make_setup <- function(repl, estmod, opmod, root = "results") {
 ## estimate catchability parameters if using a single survey vessel.
 estmod_pars <- function(estmod) {
   switch(estmod,
-         surv = specify_estimated(beta = TRUE, gamma = FALSE,
-                                  omega = TRUE, epsilon = FALSE,
-                                  lambda = FALSE, eta = FALSE,
-                                  phi = FALSE, psi = FALSE,
+         surv = specify_estimated(beta = TRUE,
+                                  gamma = FALSE,
+                                  omega = list(omega_n = TRUE, omega_w = FALSE),
+                                  epsilon = FALSE,
+                                  lambda = FALSE, # Survey-only
+                                  eta = FALSE,
+                                  phi = FALSE,
+                                  psi = FALSE,
                                   kappa_map =
-                                    c(1, 2, NA, NA, NA, NA, NA, NA)),
-         spatab = specify_estimated(beta = TRUE, gamma = FALSE,
-                                    omega = TRUE, epsilon = FALSE,
-                                    phi = FALSE, psi = FALSE,
+                                    c(1, NA, NA, NA, NA, NA, NA, NA)),
+         spatab = specify_estimated(beta = TRUE,
+                                    gamma = FALSE,
+                                    omega = list(omega_n = TRUE, omega_w = FALSE),
+                                    epsilon = FALSE,
+                                    phi = FALSE,
+                                    psi = FALSE,
                                     kappa_map =
-                                      c(1, 2, NA, NA, NA, NA, NA, NA)),
-         spatq = specify_estimated(beta = TRUE, gamma = FALSE,
-                                   omega = TRUE, epsilon = FALSE,
-                                   lambda = TRUE, eta = FALSE,
-                                   phi = TRUE, psi = FALSE,
+                                      c(1, NA, NA, NA, NA, NA, NA, NA)),
+         spatq = specify_estimated(beta = TRUE,
+                                   gamma = FALSE,
+                                   omega = list(omega_n = TRUE, omega_w = FALSE),
+                                   epsilon = FALSE,
+                                   lambda = TRUE,
+                                   eta = FALSE,
+                                   phi = list(phi_n = TRUE, phi_w = FALSE),
+                                   psi = FALSE,
                                    kappa_map =
-                                     c(1, 2, NA, NA, 1, 2, NA, NA)))
+                                     c(1, NA, NA, NA, 2, NA, NA, NA)))
 }
 
 get_prev_em <- function(estmod) {
