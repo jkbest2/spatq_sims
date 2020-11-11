@@ -12,3 +12,6 @@ coordref.csv
 /VAST-run/
 *.png
 *.jpg
+*.html
+*.docx
+*.pdf

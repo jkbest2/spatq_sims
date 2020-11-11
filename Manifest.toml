@@ -159,7 +159,9 @@ version = "0.9.7"
 
 [[FisherySim]]
 deps = ["Arpack", "Distributions", "LinearAlgebra", "PDMats", "Random", "StatsBase", "Test", "TweedieDistributions"]
-path = "/home/jkbest/.julia/dev/FisherySim/"
+git-tree-sha1 = "33ffca9f5b48595818c107b3d39f2b49dfdbfb0b"
+repo-rev = "master"
+repo-url = "https://github.com/jkbest2/FisherySim.jl"
 uuid = "c2a90378-fa76-5799-9c4c-bbfd1330d11a"
 version = "0.2.1"
 
@@ -524,7 +526,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[SpatQSims]]
 deps = ["CSV", "Distributions", "FisherySim", "HDF5", "Plots", "Random", "Statistics", "StatsBase", "StructArrays", "TweedieDistributions"]
-path = "/home/jkbest/.julia/dev/SpatQSims/"
+git-tree-sha1 = "67dfaed38e1c98d008ddac37dae0f8e9edf57f07"
+repo-rev = "master"
+repo-url = "https://github.com/jkbest2/SpatQSims.jl"
 uuid = "baf29d45-b477-4558-8186-4051bce8e0df"
 version = "0.1.2"
 
@@ -590,7 +594,9 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[TweedieDistributions]]
 deps = ["Distributions", "Random"]
-path = "/home/jkbest/.julia/dev/TweedieDistributions/"
+git-tree-sha1 = "3ecf587b2c0ed1077d6164a3d1fc9957536a6046"
+repo-rev = "master"
+repo-url = "https://github.com/jkbest2/TweedieDistributions.jl"
 uuid = "074c098c-c2ce-40ce-9d8c-a479c1fc98cf"
 version = "0.2.0"
 
