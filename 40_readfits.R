@@ -19,8 +19,8 @@ get_mgc <- function(fitlist) {
 }
 
 read_index_csv <- function(filename) {
-  opmods <- c("combo", "pref", "spatq")
-  estmods <- c("spatq", "all", "indep")
+  opmods <- c("combo", "pref", "spat")
+  estmods <- c("surv", "spatab", "spatq")
   read_csv(filename,
            col_types = cols(repl = col_factor(levels = 1:50),
                             opmod = col_factor(levels = opmods),
