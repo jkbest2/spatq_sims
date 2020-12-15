@@ -1,0 +1,524 @@
+---
+title: Catchability as a spatiotemporal random field for standardizing fishery-dependent data
+subtitle: GSS 2020
+author: John Best, André Punt, Jim Thorson, Rick Methot
+date: November 12, 2020
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      countIncrementalSlides: false
+---
+
+<!-- $$\require{color} -->
+<!-- \definecolor{C}{RGB}{225,106,134} -->
+<!-- \definecolor{N}{RGB}{80,163,21} -->
+<!-- \definecolor{q}{RGB}{0,154,222} -->
+<!-- \renewcommand{\vec}[1]{\boldsymbol{#1}}$$ -->
+
+```{r echo=FALSE, message=FALSE}
+library(hdf5r)
+library(tidyverse)
+library(spatq)
+library(gganimate)
+
+knitr::opts_chunk$set(echo = FALSE,
+                      fig.width = 7,
+                      fig.height = 7,
+                      fig.align = "center",
+                      dev = "svg",
+                      cache = TRUE)
+
+root_dir <- "../.."
+s1 <- seq(0.5, 99.5, 1)
+coord_df <- expand.grid(s1 = s1,
+                        s2 = s1,
+                        year = 1:25)
+
+poparray_file <- function(repl, opmod, root_dir = ".") {
+  repl_str <- str_pad(repl, width = 2, pad = 0)
+  repl_dir <- paste0("repl_", repl_str)
+  h5_file <- paste0("pop_", repl_str, ".h5")
+  file.path(root_dir, repl_dir, h5_file)
+}
+
+read_poparray <- function(repl, opmod, root_dir = "../..") {
+  fn <- poparray_file(repl, opmod, root_dir)
+  file <- H5File$new(fn, mode = "r")
+  grp <- file[[opmod]]
+  pop <- grp[["popstate"]]
+  pop$read()
+}
+
+pop_theme <- function() {
+  theme(axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        panel.background = element_blank(),
+        legend.position = "none")
+}
+```
+
+```{r}
+repl <- 2
+opmod <- "pref"
+pop_ar <- read_poparray(repl, opmod, root_dir)
+pop_df <- tibble(coord_df, pop = c(pop_ar))
+catch_df <- read_catch(repl, opmod, root_dir) %>%
+  mutate(vessel_idx = factor(vessel_idx)) %>%
+  rename(year = time)
+```
+
+```{r}
+plot_popsurv <- function(yr) {
+  maxpop <- max(pop_df$pop)
+  maxcatch <- max(catch_df$catch_biomass)
+  pop_df %>%
+    filter(year == yr) %>%
+    ggplot(aes(x = s1, y = s2, fill = pop)) +
+    geom_raster(alpha = 1) +
+    scale_fill_viridis_c(limits = c(0, maxpop)) +
+    coord_equal() +
+    pop_theme() +
+    geom_point(aes(color = factor(vessel_idx),
+                   fill = NULL,
+                   size = catch_biomass),
+               data = filter(catch_df,
+                             year == yr,
+                             vessel_idx == 1)) +
+    scale_size_continuous(limits = c(0, maxcatch))
+}
+
+plot_popcatch <- function(yr) {
+  plot_popsurv(yr) +
+    geom_jitter(aes(color = factor(vessel_idx),
+                    fill = NULL,
+                    size = catch_biomass),
+                data = filter(catch_df,
+                              year == yr,
+                              vessel_idx == 2),
+                width = 0.5, height = 0.5,
+                alpha = 0.8)
+}
+```
+
+```{r}
+plot_popyear(1)
+```
+
+$$\require{color}
+\definecolor{C}{RGB}{225,106,134}
+\definecolor{N}{RGB}{80,163,21}
+\definecolor{q}{RGB}{0,154,222}
+\renewcommand{\vec}[1]{\boldsymbol{#1}}$$
+
+---
+
+```{r}
+plot_popsurv(1)
+```
+
+---
+
+```{r}
+index_filename <- function(repl, opmod, estmod, results_dir = "results") {
+  flnm <- paste(str_pad(repl, 2, "left", pad = 0),
+                opmod, estmod, "index.csv",
+                sep = "_")
+  file.path(results_dir, flnm)
+}
+opmods <- c("combo", "pref", "spat")
+estmods <- c("surv", "spatab", "spatq")
+index_df <- read_csv(index_filename(repl, "pref", "surv", results_dir),
+         col_types = cols(repl = col_factor(levels = 1:50),
+                          opmod = col_factor(levels = opmods),
+                          estmod = col_factor(levels = estmods),
+                          year = col_integer(),
+                          raw_est = col_double(),
+                          index_est = col_double(),
+                          sd_raw = col_double(),
+                          sd = col_double(),
+                          raw_true = col_double(),
+                          index_true = col_double()))
+```
+
+```{r fig.width=10, fig.height=7.5}
+index_df %>%
+  mutate(ymin = index_est - 2 * sd,
+         ymax = index_est + 2 * sd) %>%
+  ggplot(aes(x = year, color = estmod, fill = estmod)) +
+  geom_line(aes(y = index_true), linetype = "dashed", color = "black", size = 2) +
+  geom_ribbon(aes(ymin = ymin, ymax = ymax), alpha = 0.2) +
+  geom_line(aes(y = index_est), size = 2) +
+  labs(x = "Year", y = "Index") +
+  scale_x_continuous(breaks = 1:15) +
+  theme(axis.text = element_text(size = 16),
+        axis.title = element_text(size = 20),
+        legend.position = "none")
+```
+
+---
+
+```{r}
+plot_popcatch(1)
+```
+
+---
+
+# Fishers are *not* doing a survey
+
+.pull-left[
+### Survey
+
+- Defined sampling scheme
+
+- Defined sampling procedures
+]
+
+--
+
+.pull-right[
+### Fishery
+
+- Nonrandom sampling:
+  - Abundance
+  - Other target species
+  - Distance to port
+
+- Varying catchability
+  - Other target species
+  - Nonstandardized procedures
+]
+
+???
+
+Can we account for these factors by allowing fishery vessel catchability to vary
+in space and/or time?
+
+---
+
+## Catchability changes are probably correlated in space
+
+- Use spatial and spatiotemporal random effects on catchability
+
+- Only for fishery observations
+
+- Need survey observations for identifiability
+
+---
+
+## Model for spatially varying catchability
+
+$$\log \vec{n} =
+  {\color{N} \vec{X}_n\vec{\beta}_n + \vec{A}_\omega\vec{\omega}_n + \vec{A}_{\epsilon}\vec{\epsilon}_n} +
+  {\color{q} \vec{Q}_n\vec{\lambda}_n + \vec{A}_\phi\vec{\phi}_{n} + \vec{A}_{\psi}\vec{\psi}_{n}}$$
+$$\log \vec{w} =
+  {\color{N} \vec{X}_w\vec{\beta}_w + \vec{A}_\omega\vec{\omega}_w + \vec{A}_{\epsilon}\vec{\epsilon}_w} +
+  {\color{q} \vec{Q}_w\vec{\lambda}_w + \vec{A}_\phi\vec{\phi}_{w} + \vec{A}_{\psi}\vec{\psi}_{w}}$$
+
+.center[
+$\vec{n}$: Numbers density
+
+$\vec{w}$: Weight per group
+]
+
+--
+
+.pull-left[
+### <span style="color:#50A315">Abundance</span>
+
+- $\color{N} \vec{X}\vec{\beta}$: Fixed effects (e.g. year)
+
+- $\color{N} \vec{A}_\omega\vec{\omega}$: Spatial random effects
+
+- $\color{N} \vec{A}_\epsilon\vec{\epsilon}$: Spatiotemporal random effects
+]
+
+--
+
+.pull-right[
+### <span style="color:#009ADE">Catchability</span>
+
+- $\color{q} \vec{Q}\vec{\lambda}$: Fixed effects (e.g. vessel)
+
+- $\color{q} \vec{A}_\phi\vec{\phi}$: Spatial random effects
+
+- $\color{q} \vec{A}_\psi\vec{\psi}$: Spatiotemporal random effects
+]
+
+---
+
+## Simulation study
+
+.pull-left[
+### Operating models
+
+- Preference proportional to abundance
+
+- Direct spatially varying catchability
+]
+
+--
+
+.pull-right[
+### Estimation models
+
+- Survey data only
+
+- All data with spatial catchability
+]
+
+---
+
+```{r}
+fit_df <- read_csv(index_filename(repl, opmod, "spatq", results_dir),
+                   col_types = cols(opmod = col_factor(levels = opmods),
+                                    estmod = col_factor(levels = estmods),
+                                    .default = col_double())) %>%
+  mutate(ymin = index_est - 2 * sd,
+         ymax = index_est + 2 * sd)
+```
+
+```{r fig.width=10, fig.height=7.5}
+index_df %>%
+  mutate(ymin = index_est - 2 * sd,
+         ymax = index_est + 2 * sd) %>%
+  ggplot(aes(x = year, color = estmod, fill = estmod)) +
+  geom_line(aes(y = index_true), color = "black", linetype = "dashed", size = 2) +
+  geom_ribbon(aes(ymin = ymin, ymax = ymax), alpha = 0.2) +
+  geom_ribbon(aes(ymin = ymin, ymax = ymax), data = fit_df, alpha = 0.2) +
+  geom_line(aes(y = index_est), size = 2) +
+  geom_line(aes(y = index_est), data = fit_df, size = 2) +
+  labs(x = "Year", y = "Index") +
+  scale_x_continuous(breaks = 1:15) +
+  theme(axis.text = element_text(size = 16),
+        axis.title = element_text(size = 20),
+        legend.position = "none")
+```
+
+
+---
+
+## Bias
+
+```{r}
+bias_df <- read_csv("figs/bias.csv",
+                    col_types = "ccd")
+bias_df %>%
+  mutate(delta = signif(delta, 3)) %>%
+  pivot_wider(id_cols = opmod,
+              names_from = estmod,
+              values_from = delta) %>%
+  mutate(opmod = c("Preferential", "Spatial q")) %>%
+  rename(Operating = opmod,
+         `Spatial q` = spatq,
+         Survey = surv) %>%
+  knitr::kable(.) %>%
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+---
+
+# Bias
+
+```{r out.height="50%", eval=FALSE}
+knitr::include_graphics("figs/bias_plot.png", dpi = 128)
+```
+
+<img src="figs/bias_plot.png" height="500">
+
+---
+
+# Error (RMSE)
+
+```{r}
+rmse_df <- read_csv("figs/rmse.csv", col_types = "ccd")
+rmse_df %>%
+  mutate(rmse = signif(rmse, 2)) %>%
+  pivot_wider(id_cols = opmod,
+              names_from = estmod,
+              values_from = rmse) %>%
+  mutate(opmod = c("Preferential", "Spatial q")) %>%
+  rename(Operating = opmod,
+         `Spatial q` = spatq,
+         Survey = surv) %>%
+  knitr::kable(.) %>%
+  kableExtra::kable_styling(full_width = FALSE)
+```
+
+---
+
+# Error
+
+```{r eval=FALSE, fig.width=6, fig.height=4, cache=FALSE}
+knitr::include_graphics("figs/index_devs.png")
+```
+
+<img src="figs/index_devs.png" height="500">
+
+---
+
+# Calibration
+
+```{r fig.width=6, fig.height=4, cache=FALSE, eval=FALSE}
+knitr::include_graphics("figs/calibration.png")
+```
+
+<img src="figs/calibration.png" height="500">
+
+---
+
+# Thank you!
+
+---
+
+# EXTRA SLIDES
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+```{r}
+yr <- yr + 1
+plot_popcatch(yr) +
+  ggtitle(paste("Year:", yr))
+```
+
+---
+
+# The model
+
+- We observe <span style="color:#E16A86">catch biomass</span>.
+
+--
+
+- We want to learn about changes in <span style="color:#50A315">abundance (biomass)</span>.
+
+--
+
+- We have to account for factors that affect <span
+  style="color:#E16A86">catch</span> besides <span
+  style="color:#50A315">abundance</span>.
+
+--
+
+- Effort is one important driver of catch sizes.
+
+--
+
+- Other factors are collectively called <span
+  style="color:#009ADE">catchability</span>.
+  
+- <span style="color:#009ADE">Catchability</span> can be thought of as having a
+  thinning effect.
+  
+???
+
+- In general, can't know the absolute magnitude of catchability, so we work with
+  relative catchability
+- This means that our resulting are of *relative abundance*
+
+---
