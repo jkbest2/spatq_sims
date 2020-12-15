@@ -15,3 +15,5 @@ coordref.csv
 *.html
 *.docx
 *.pdf
+/docs/gss2020/
+/misspec_kappa/

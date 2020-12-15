@@ -92,12 +92,16 @@ eval_main <- function(results_dir = "results",
                       pdonly = TRUE) {
   index_df <- read_all_indices(results_dir) %>% filter(complete.cases(.))
 
-  convg_df <- map_dfr(list_Rdata(), ~ readRDS(.)$spec) %>%
+  convg_df <- map_dfr(list_Rdata(results_dir),
+                      ~ readRDS(.)$spec) %>%
     select(estmod, opmod, repl, Rdata) %>%
     mutate(repl = factor(repl, levels = 1:50),
-           convcode = map_dbl(Rdata, ~ readRDS(.)$fit$convergence),
-           outer_mgc = map_dbl(Rdata, ~ max(readRDS(.)$fit$grad)),
-           pdhess = map_lgl(Rdata, function(fn) {
+           convcode = map_dbl(list_Rdata(results_dir),
+                              ~ readRDS(.)$fit$convergence),
+           outer_mgc = map_dbl(list_Rdata(results_dir),
+                               ~ max(readRDS(.)$fit$grad)),
+           pdhess = map_lgl(list_Rdata(results_dir),
+                            function(fn) {
              pdhess <- readRDS(fn)$sdr$pdHess
              if(is.null(pdhess)) pdhess <- FALSE
              return(pdhess)
