@@ -17,7 +17,7 @@
 #SBATCH --cpus-per-task=28
 
 ## Walltime
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 
 ## Memory per node
 #SBATCH --mem=120G
@@ -30,4 +30,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-Rscript 30_fitsims.R 1 25
+cat 30_fitsims_jobs.sh | parallel -j7

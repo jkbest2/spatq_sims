@@ -67,8 +67,7 @@ surv_bounds <- get_parbounds(surv_obj)
 ################################################################################
 spat_spec <- specify_estimated(beta = TRUE, omega = TRUE, lambda = TRUE,
                                obs_lik = 1L)
-spat_setup <- update_setup(fix_setup, fix_obj, spat_spec)
-## spat_setup <- spatq_simsetup(2, "spat", max_T = 15L, spec_estd = spat_spec)
+spat_setup <- spatq_simsetup(repl, scenario, max_T = max_T, spec_estd = spat_spec)
 spat_obj <- spatq_obj(spat_setup)
 spat_bounds <- get_parbounds(spat_obj)
 
@@ -99,3 +98,17 @@ spat_sdr <- sdreport_spatq(spat_obj)
 spat2_setup <- spatq_simsetup(repl = 1, sc = "combo", spec_estd = spat_spec)
 spat2_obj <- spatq_obj(spat2_setup)
 spat2_fit <- spatq_fit(spat2_obj)
+
+
+################################################################################
+repl <- 1
+scenario <- "pref"
+max_T <- 5L
+spq_spec <- specify_estimated(beta = TRUE, omega = TRUE,
+                                lambda = TRUE, phi = TRUE,
+                                obs_lik = 1L)
+spq_setup <- spatq_simsetup(repl, scenario, max_T = max_T, spec_estd = spq_spec)
+spq_obj <- spatq_obj(spq_setup)
+
+spq_fit <- spatq_fit(spq_obj)
+spq_sdr <- sdreport_spatq(spq_obj)

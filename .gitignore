@@ -17,3 +17,4 @@ coordref.csv
 *.pdf
 /docs/gss2020/
 /misspec_kappa/
+slurm-*.out
