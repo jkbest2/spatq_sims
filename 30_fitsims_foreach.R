@@ -1,6 +1,12 @@
 library(spatq)
+library(doParallel)
+library(foreach)
 ## devtools::load_all("~/dev/spatq", helpers = FALSE)
 library(tidyverse)
+
+## Register 1/4 number of cores to avoid conflicts with BLAS
+ncores <- parallel::detectCores()
+registerDoParallel(ncores %/% 8)
 
 ## What range of replicates are we looking for?
 repls <- as.numeric(commandArgs(trailingOnly = TRUE))
@@ -88,15 +94,16 @@ estmod_pars <- function(estmod) {
                                        phi = list(phi_n = TRUE, phi_w = FALSE),
                                        psi = FALSE,
                                        kappa_map =
-                                         c(1, NA, NA, NA, 2, NA, NA, NA),
+                                         c(1, NA, NA, NA, 1, NA, NA, NA),
                                        obs_lik = 1L))
 }
 
-main <- function(max_T = 15,
-                 optcontrol = list(eval.max = 1000L, iter.max = 750L)) {
+main <- function(max_T = 15) {
   fit_list <- fits_todo(specify_fits())
 
-  for (idx in seq_len(nrow(fit_list))) {
+  foreach(idx = seq_len(nrow(fit_list)),
+	  .inorder = FALSE,
+	  .packages = "spatq") %dopar% {
     spec <- fit_list[idx, ]
 
     setup <- spatq_simsetup(repl = spec$repl,
@@ -110,13 +117,8 @@ main <- function(max_T = 15,
                      normalize = TRUE,
                      silent = TRUE)
 
-    fit <- tryCatch({
-      ## Fit with large number of iterations and do it twice so more likely to
-      ## reach optimum. Previous fits have ended early and/or with large
-      ## gradient components, and many of these did not have PD Hessians
-      fit <- spatq_fit(obj = obj, control = optcontrol)
-      fit <- spatq_fit(obj = obj, fit = fit, control = optcontrol)
-      fit},
+    fit <- tryCatch(
+      spatq_fit(obj = obj),
       error = function(e) list(fail = TRUE))
     lpb <- tryCatch(
       gather_nvec(obj$env$last.par.best),
@@ -147,12 +149,8 @@ main <- function(max_T = 15,
                           year = 1:max_T,
                           raw_est = sdr$value[which_index],
                           index_est = rescale_index(raw_est)$index,
-                          raw_unb = sdr$unbiased$value[which_index],
-                          index_unb = rescale_index(raw_unb)$index,
-                          raw_sd = sdr$sd[which_index],
-                          index_sd = rescale_index(raw_est, sd_raw)$sd,
-                          raw_unb_sd = sdr$unbiased$sd,
-                          unb_sd = rescale_index(raw_unb, raw_unb_sd)$sd)
+                          sd_raw = sdr$sd[which_index],
+                          sd = rescale_index(raw_est, sd_raw)$sd)
     } else {
       est_index <- tibble(repl = spec$repl,
                           opmod = spec$opmod,
@@ -160,13 +158,8 @@ main <- function(max_T = 15,
                           year = 1:max_T,
                           raw_est = rep(NA, max_T),
                           index_est = rep(NA, max_T),
-                          raw_unb = rep(NA, max_T),
-                          index_unb = rep(NA, max_T),
-                          raw_sd = rep(NA, max_T),
-                          index_sd = rep(NA, max_T),
-                          raw_unb_sd = rep(NA, max_T),
-                          unb_sd = rep(NA, max_T))
-
+                          sd_raw = rep(NA, max_T),
+                          sd = rep(NA, max_T))
     }
     ## Join and write to CSV file
     index_df <- left_join(est_index, true_index, by = "year")

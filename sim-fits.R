@@ -1,4 +1,18 @@
-devtools::load_all("~/src/spatq", helpers = FALSE)
+## devtools::load_all("~/src/spatq", helpers = FALSE)
+library(spatq)
+
+spec <- specify_estimated(beta = TRUE, gamma = FALSE,
+                          omega = list(omega_n = TRUE, omega_w = FALSE),
+                          epsilon = FALSE,
+                          lambda = TRUE, eta = FALSE,
+                          phi = list(phi_n = TRUE, phi_w = FALSE),
+                          psi = FALSE,
+                          kappa_map = c(1, NA, NA, NA, 1, NA, NA, NA))
+
+setup <- spatq_simsetup(1, "spat", max_T = 15, spec_estd = spec)
+
+
+
 
 c_df <- read_catch(1, "spat")
 cdata <- prepare_data()

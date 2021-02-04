@@ -29,26 +29,18 @@ get_repl_str <- function(repl) {
   str_pad(repl, 2, pad = 0)
 }
 
-get_parval_csv <- function(root = "misspec_kappa") {
+get_parval_csv <- function(repl, kappa_map, root = "misspec_kappa") {
+  csvname <- paste0("parval", get_repl_str(repl), 
   file.path(root, "parval.csv")
 }
 
-append_parval <- function(df, root = "misspec_kappa") {
-  write_csv(df, get_parval_csv(root), append = TRUE)
+write_parval <- function(df, repl, kappa_map, root = "misspec_kappa") {
+  write_csv(df, get_parval_csv(root))
 }
-
-ref_df <- tibble(par = c("omega_n", "omega_w",
-                         "epsilon_n", "epsilon_w",
-                         "phi_n", "phi_w",
-                         "psi_n", "psi_w"),
-                 kappa_true = exp(setup_gen$parameters$log_kappa),
-                 tau_true = exp(setup_gen$parameters$log_tau),
-                 rho_true = rho_gen,
-                 spsig_true = pars_sig(tau_true, kappa_true))
 
 make_parval_df <- function(fit, kappa_map, repl, ref_df = ref_df) {
   pars <- gather_nvec(fit$par)
-  kappa_est <- exp(pars$log_kappa)
+  kappa_est <- exp(pars$log_kappa)[kappa_map]
   tau_est <- exp(pars$log_tau)
   rho_est <- pars_rho(kappa_est)
   sigsp_est <- pars_sig(tau_est, kappa_est)
@@ -63,7 +55,7 @@ make_parval_df <- function(fit, kappa_map, repl, ref_df = ref_df) {
 }
 
 n_sims <- 50
-max_T <- 10
+max_T <- 5
 kappa_maps <- list(twopar = c(1, 2, 1, 2, 1, 2, 1, 2),
                    fourpar = c(1, 2, 1, 2, 3, 4, 3, 4))
 
@@ -96,11 +88,20 @@ obj_gen <- spatq_obj(setup_gen,
                      runSymbolicAnalysis = TRUE,
                      normalize = TRUE,
                      silent = TRUE)
-original_gen <- list(spec_estd = estd_gen,
+original_setup <- list(spec_estd = estd_gen,
                      data = setup_gen$data,
                      parameters = setup_gen$parameters,
                      map = setup_gen$map,
                      random = setup_gen$random)
+
+ref_df <- tibble(par = c("omega_n", "omega_w",
+                         "epsilon_n", "epsilon_w",
+                         "phi_n", "phi_w",
+                         "psi_n", "psi_w"),
+                 kappa_true = exp(setup_gen$parameters$log_kappa),
+                 tau_true = exp(setup_gen$parameters$log_tau),
+                 rho_true = rho_gen,
+                 spsig_true = pars_sig(tau_true, kappa_true))
 
 sims <- replicate(n_sims, obj_gen$simulate(), simplify = FALSE)
 
@@ -112,7 +113,18 @@ for (repl in seq_along(sims)) {
   sim <- sims[[repl]]
   for (kmap in kappa_maps) {
     obj <- objectify_sim(sim, kmap, original_setup)
-    fit <- fit_spatq(obj, optcontrol = octl)
+    fit <- tryCatch(
+    fit_spatq(obj, optcontrol = octl),
+    error = function(e) {
+      l <- list()
+      l$par <- rep(NA, 21 + length(unique(kmap)))
+      names(l) <- c(rep("beta_n", max_T), rep("beta_w", max_T),
+		    "lambda_n", "lambda_w",
+		    rep("log_kappa", length(unique(kmap))),
+		    rep("log_tau", 8),
+		    "log_sigma")
+      l
+    })
     df <- make_parval_df(fit, kmap, repl, ref_df)
     append_parval(df, root)
   }
