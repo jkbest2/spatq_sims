@@ -30,4 +30,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-cat 30_fitsims_jobs.sh | parallel -j7
+cat 31_fitsims_jobs.sh | parallel -j7
