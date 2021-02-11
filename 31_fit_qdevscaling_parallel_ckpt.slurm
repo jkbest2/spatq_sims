@@ -30,4 +30,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-cat 31_fitsims_jobs.sh | parallel -j7
+cat 31_fit_qdevscaling_jobs.sh  | parallel -j7
