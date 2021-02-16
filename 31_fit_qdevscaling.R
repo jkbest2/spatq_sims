@@ -1,4 +1,15 @@
-library(spatq)
+## If script is run in the REPL interactively, use the local `spatq` package and
+## manually set a range of replicates to fit, because they were probably not
+## passed as command line arguments when R was started. Otherwise (typically on
+## Hyak via SLURM), use the installed version of `spatq` and read in the
+## replicate numbers from the command line arguments.
+if (interactive()) {
+  devtools::load_all("~/dev/spatq", helpers = FALSE)
+  repl_arg <- c(1, 5)
+} else {
+  library(spatq)
+  repl_arg <- as.numeric(commandArgs(trailingOnly = TRUE))
+}
 library(tidyverse)
 
 ## What range of replicates are we looking for?
