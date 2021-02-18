@@ -27,7 +27,5 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-# module load contrib/julia/1.3
-
 julia --project -- 10_prepsims.jl 25
 
