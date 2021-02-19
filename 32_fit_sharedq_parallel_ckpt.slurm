@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=fit_sims
+#SBATCH --job-name=fit_sharedq
 
 ## Allocations definition
 #SBATCH --account=stf-ckpt

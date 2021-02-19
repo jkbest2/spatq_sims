@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=run_sims_qdevscaling
+#SBATCH --job-name=sim_sharedq
 
 ## Allocations definition
 #SBATCH --account=stf

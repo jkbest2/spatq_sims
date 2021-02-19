@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=fit_sims
+#SBATCH --job-name=fit_prefintensity
 
 ## Allocations definition
 #SBATCH --account=stf-ckpt
