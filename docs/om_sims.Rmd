@@ -1,0 +1,319 @@
+---
+title: Operating model example
+output:
+  html_document:
+    toc: true
+    toc_depth: 1
+params:
+    study: qdevscaling
+    repl: 1
+    opmod: 1
+    max_T: 15
+    root_dir: ..
+---
+
+```{r include = FALSE}
+library(spatq)
+library(tidyverse)
+library(patchwork)
+library(hdf5r)
+
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+
+om_files <- sim_file_paths(params$study,
+                           params$repl,
+                           params$opmod,
+                           params$root_dir)
+```
+
+```{r}
+source("om_sims_funs.R")
+
+## Spatial binning for e.g. effort plots
+brks <- seq(0, 100, length = 21)
+sz <- brks[2] - brks[1]
+cntrs <- brks[1:20] + diff(brks) / 2
+
+pars <- om_pars(params$study, params$opmod)
+```
+
+## OM parameter values
+
+This was part of the simulation study addressing the effect of the `r switch(params$study, qdevscaling = "magnitude of catchability variation", sharedq = "magnitude of catchability variation for the survey relative to the commercial fleet", prefintensity = "intensity of preferential sampling")`.
+
+- Base catchability: $`r pars$base_q`$
+- Marginal SD of commercial log-catchability deviations: $`r pars$logq_sd`$
+- Marginal SD of survey log-catchability deviations: $`r pars$sharedq * pars$logq_sd`$
+- Preference power: $`r pars$pref_power`$
+
+# Overall trends
+
+## Abundance
+
+```{r}
+pop_df <- read_popstate(params$study,
+                        params$repl,
+                        params$opmod,
+                        params$root_dir) %>%
+  filter(time <= params$max_T)
+
+pop_df %>%
+  ggplot(aes(x = time, y = pop)) +
+  geom_line() +
+  scale_x_continuous(breaks = seq(5, 15, 5),
+                     minor_breaks = 1:15,
+                     expand = expansion(0.05, 0)) +
+  scale_y_continuous(limits = c(0, NA),
+                     expand = expansion(c(0, 0.05), 0)) +
+  labs(y = "Total biomass") +
+  theme_minimal() +
+  theme(axis.line = element_line())
+```
+
+## Catch
+
+```{r}
+catch_df <- read_catch(params$study,
+                       params$repl,
+                       params$opmod,
+                       params$root_dir) %>%
+  filter(time <= params$max_T) %>%
+  mutate(vessel_idx = factor(vessel_idx,
+                             labels = c("Survey", "Commercial")))
+```
+
+```{r}
+catch_df %>%
+  group_by(time, vessel_idx) %>%
+  summarize(catch_biomass = sum(catch_biomass)) %>%
+  ggplot(aes(x = time, y = catch_biomass, color = vessel_idx)) +
+  geom_line() +
+  facet_grid(vessel_idx ~ ., scales = "free_y") +
+  scale_x_continuous(breaks = seq(5, 15, 5),
+                     minor_breaks = 1:15,
+                     expand = expansion(0.05, 0)) +
+  scale_y_continuous(limits = c(0, NA),
+                     expand = expansion(c(0, 0.05), 0)) +
+  labs(y = "Catch biomass") +
+  scale_color_discrete(guide = FALSE) +
+  theme_minimal() +
+  theme(axis.line = element_line())
+```
+
+## Naive indices of abundance
+
+These are simply the mean catches within each year, normalized to have a geometric mean of 1.
+
+```{r}
+comm_index <- catch_df %>%
+  filter(vessel_idx == "Commercial") %>%
+  group_by(time) %>%
+  summarize(tot_catch = sum(catch_biomass)) %>%
+  mutate(vessel_idx = "Commercial",
+         index = rescale_index(tot_catch)$index) %>%
+  select(-tot_catch)
+
+surv_index <- catch_df %>%
+  filter(vessel_idx == "Survey") %>%
+  group_by(time) %>%
+  summarize(tot_catch = sum(catch_biomass)) %>%
+  mutate(vessel_idx = "Survey",
+         index = rescale_index(tot_catch)$index) %>%
+  select(-tot_catch)
+
+combo_index <- catch_df %>%
+  group_by(time) %>%
+  summarize(tot_catch = sum(catch_biomass)) %>%
+  mutate(vessel_idx = "Combo",
+         index = rescale_index(tot_catch)$index) %>%
+  select(-tot_catch)
+
+true_index <- pop_df %>%
+  mutate(vessel_idx = "True",
+         index = rescale_index(pop)$index) %>%
+  select(-pop)
+
+rbind(comm_index, surv_index, combo_index, true_index) %>%
+  mutate(vessel_idx = fct_relevel(vessel_idx,
+                                  "Survey",
+                                  "Commercial",
+                                  "Combo",
+                                  "True")) %>%
+  ggplot(aes(x = time, y = index, color = vessel_idx)) +
+  geom_line() +
+  ## geom_line(aes(x = time, y = index), data = true_index, color = "black", inherit.aes = FALSE) +
+  scale_x_continuous(breaks = seq(5, 15, 5),
+                     minor_breaks = 1:15,
+                     expand = expansion(0.05, 0)) +
+  scale_y_continuous(limits = c(0, NA),
+                     expand = expansion(c(0, 0.05), 0)) +
+  scale_color_manual(values = c("#F8766D", "#00BFC4", "#7CAE00", "#000000")) +
+  labs(y = "Naive index") +
+  theme_minimal() +
+  theme(axis.line = element_line(),
+        legend.title = element_blank(),
+        legend.position = "bottom")
+```
+
+# Abundance
+
+```{r}
+pop_file <- h5file(om_files$poph5, mode = "r")
+pop_array <- pop_file[["popstate"]]$read()
+pop_file$close()
+```
+
+```{r}
+spatpop_df <- cross_df(list(s1 = seq(0.5, 99.5),
+                            s2 = seq(0.5, 99.5),
+                            time = 1:params$max_T)) %>%
+  mutate(pop = as.vector(pop_array[, , seq_len(params$max_T)]))
+```
+
+```{r}
+pop_plot <- ggplot(spatpop_df, aes(x = s1, y = s2, fill = pop)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = FALSE) +
+  facet_wrap(~ time, nrow = 3) +
+  coord_equal(xlim = c(0, 100),
+              ylim = c(0, 100)) +
+  om_theme()
+pop_plot
+```
+
+# Catch
+
+## Survey
+
+```{r}
+survey_catch_plot <- catch_df %>%
+  group_by(time, s1, s2) %>%
+  filter(vessel_idx == "Survey") %>%
+  summarize(tot_catch = sum(catch_biomass)) %>%
+  ggplot(aes(x = s1, y = s2, color = tot_catch, size = tot_catch)) +
+  ## geom_tile(width = 1, height = 1) +
+  geom_point() +
+  scale_color_viridis_c(option = "B") +
+  guides(color = FALSE,
+         size = FALSE) +
+  facet_wrap(~ time, nrow = 3) +
+  coord_equal(xlim = c(0, 100), ylim = c(0, 100)) +
+  om_theme()
+survey_catch_plot
+```
+
+## Commercial (binned 5×5)
+
+The full 100×100 grid is too sparse and noisy when looking at the whole time series.
+
+```{r}
+comm_df <- catch_df %>%
+  filter(vessel_idx == "Commercial") %>%
+  mutate(g1 = cut(s1, brks, labels = FALSE),
+         g2 = cut(s2, brks, labels = FALSE)) %>%
+  group_by(time, g1, g2) %>%
+  summarize(tot_catch = sum(catch_biomass),
+            tot_effort = sum(effort)) %>%
+  mutate(s1 = cntrs[g1],
+         s2 = cntrs[g2])
+
+comm_catch_plot <- ggplot(comm_df, aes(x = s1, y = s2, fill = tot_catch)) +
+  geom_tile(width = sz, height = sz) +
+  scale_fill_viridis_c(option = "B",
+                       guide = FALSE) +
+  facet_wrap(~ time, nrow = 3) +
+  coord_equal(xlim = c(0, 100), ylim = c(0, 100)) +
+  om_theme()
+comm_catch_plot
+```
+
+# Commercial targeting
+
+## Expected commercial effort
+
+This is calculated as the probability of being chosen, multiplied by 2000 total
+trips.
+
+```{r}
+pref_df <- spatpop_df %>%
+  group_by(time) %>%
+  mutate(tot_pop = sum(pop),
+         target_prob = pop / tot_pop,
+         expect_eff = target_prob * 2000)
+  
+pref_df %>%
+  ggplot(aes(x = s1, y = s2, fill = expect_eff)) +
+  geom_raster() +
+  scale_fill_binned() +
+  coord_equal(xlim = c(0, 100),
+              ylim = c(0, 100)) +
+  facet_wrap(~ time, nrow = 3) +
+  om_theme() +
+  theme(legend.title = element_blank())
+```
+
+## Realized commercial effort
+
+```{r}
+ggplot(comm_df, aes(x = s1, y = s2, fill = tot_effort)) +
+  geom_tile(width = sz, height = sz) +
+  scale_fill_viridis_b(option = "E") +
+  facet_wrap(~ time, nrow = 3) +
+  coord_equal(xlim = c(0, 100), ylim = c(0, 100)) +
+  om_theme()
+```
+
+# Catchability
+
+```{r}
+## logq_sd <- om_val(params$study, params$opmod)
+prepf <- h5file(file.path(params$root_dir, "prep.h5"), "r")
+logq_devs <- prepf[["log_catchability_devs"]]$read()[, , params$repl]
+prepf$close()
+logq_df <- spatpop_df %>%
+  filter(time == 1) %>%
+  mutate(logq_dev = as.vector(logq_devs),
+         comm_q = comm_catchability(logq_dev, pars),
+         surv_q = survey_catchability(logq_dev, pars),
+         comm_popq = pop * comm_q,
+         surv_popq = pop * surv_q)
+
+cb_plot <- logq_df %>%
+  select(s1, s2, comm_q, surv_q) %>%
+  pivot_longer(cols = c(comm_q, surv_q),
+               names_to = "fleet",
+               values_to = "q") %>%
+  mutate(fleet = ifelse(fleet == "comm_q",
+                        "Commercial", "Survey")) %>%
+  ggplot(aes(x = s1, y = s2, fill = q)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "A") +
+  coord_equal(xlim = c(0, 100),
+              ylim = c(0, 100)) +
+  facet_grid(fleet ~ .) +
+  ggtitle("Catchability") +
+  om_theme() +
+  theme(legend.title = element_blank())
+  
+abq_plot <- logq_df %>%
+  select(s1, s2, comm_popq, surv_popq) %>%
+  pivot_longer(cols = c(comm_popq, surv_popq),
+               names_to = "fleet",
+               values_to = "popq") %>%
+  mutate(fleet = ifelse(fleet == "comm_popq",
+                        "Commercial", "Survey")) %>%
+  ggplot(aes(x = s1, y = s2, fill = popq)) +
+  geom_raster() +
+  scale_fill_viridis_c(option = "C") +
+  coord_equal(xlim = c(0, 100),
+              ylim = c(0, 100)) +
+  facet_grid(fleet ~ .) +
+  ggtitle("Expected catch (abundance × catchability)") +
+  om_theme() +
+  theme(legend.title = element_blank())
+
+cb_plot + abq_plot
+```
+
