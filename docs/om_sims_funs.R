@@ -12,9 +12,9 @@ par_descr <- function(study) {
          prefintensity = "preference was proportional to abundance to the power ")
 }
 om_val <- function(study, opmod) {
-  qdevvals <- 10 ^ (-5:1)
+  qdevvals <- 10 ^ (-3:2)
   sharedqvals <- seq(0, 1, 0.2)
-  prefintensvals <- c(1, 2, 4, 8, 16)
+  prefintensvals <- c(0, 1, 2, 4, 8, 16)
 
   switch(study,
          qdevscaling = qdevvals[opmod],

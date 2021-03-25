@@ -21,7 +21,7 @@ max_T <- 15
 ## Tune the optimization routine
 optcontrol <- list(eval.max = 1000L, iter.max = 750L)
 ## Names of the operating models
-opmods <- 1:5
+opmods <- 1:6
 ## Names of the estimation models
 estmods <- c("survey",     # Survey-only
              "spatial_ab", # All data, spatial abundance
