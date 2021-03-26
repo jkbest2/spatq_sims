@@ -17,7 +17,7 @@
 #SBATCH --cpus-per-task=28
 
 ## Walltime
-#SBATCH --time=1:00:00
+#SBATCH --time=30:00
 
 ## Memory per node
 #SBATCH --mem=120G
