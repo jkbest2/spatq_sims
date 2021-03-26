@@ -17,7 +17,7 @@
 #SBATCH --time=4:00:00
 
 ## Memory per node
-#SBATCH --mem=100G
+#SBATCH --mem=120G
 
 ## Set the working directory for this job.
 ## Directory must exist before submitting job.
