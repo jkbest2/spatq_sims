@@ -27,4 +27,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-julia --project -p 28 --check-bounds=no -L 20_gensims.jl -- 21_runsims_qdevscaling.jl 25
+julia --project -p 7 --check-bounds=no -L 20_gensims.jl -- 21_runsims_qdevscaling.jl 25
