@@ -7,7 +7,7 @@ param_list <- cross(list(study = c("qdevscaling",
                                    "sharedq",
                                    "prefintensity"),
                          repl = 1:5,
-                         opmod = 1:5,
+                         opmod = 1:6,
                          root_dir = "~/gscratch/spatq_sims"))
 
 render_om <- function(pars) {
