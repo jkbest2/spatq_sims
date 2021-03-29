@@ -179,6 +179,7 @@ for (study in studies) {
   calibration_plot <- evaluate_calibration(index_df)
   index_devs <- plot_index_devs(index_df)
 
+  write_csv(pdhess_df, file.path(eval_dir, study, "pdhess_wide.csv"))
   write_csv(bias_df, file.path(eval_dir, study, "bias.csv"))
   write_csv(bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
   write_csv(rmse_df, file.path(eval_dir, study, "rmse.csv"))
