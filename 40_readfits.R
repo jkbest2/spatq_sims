@@ -91,9 +91,15 @@ evaluate_calibration <- function(index_df) {
     mutate(pnorm = pnorm(index_true, index_unb, unb_sd)) %>%
     ggplot(aes(x = pnorm, y = stat(density), fill = estmod)) +
     geom_histogram(breaks = seq(0.0, 1.0, 0.1)) +
-    geom_hline(yintercept = 1) +
+    geom_hline(yintercept = 1, linetype = "dashed") +
     facet_grid(opmod ~ estmod) +
-    guides(fill = FALSE)
+    labs(x = "Quantile") +
+    guides(fill = FALSE) +
+    theme_minimal() +
+    theme(axis.line.x = element_line(),
+          axis.title.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          axis.text.y = element_blank())
 }
 
 plot_index_devs <- function(index_df) {
@@ -174,7 +180,9 @@ for (study in studies) {
   index_devs <- plot_index_devs(index_df)
 
   write_csv(bias_df, file.path(eval_dir, study, "bias.csv"))
+  write_csv(bias_wide, "figs/bias_wide.csv")
   write_csv(rmse_df, file.path(eval_dir, study, "rmse.csv"))
+  write_csv(rmse_wide, "figs/rmse_wide.csv")
   ggsave(file.path(eval_dir, study, "bias_plot.pdf"), bias_plot)
   ggsave(file.path(eval_dir, study, "calibration.pdf"), calibration_plot)
   ggsave(file.path(eval_dir, study, "index_devs.pdf"), index_devs)
