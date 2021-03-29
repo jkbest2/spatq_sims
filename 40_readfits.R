@@ -180,9 +180,9 @@ for (study in studies) {
   index_devs <- plot_index_devs(index_df)
 
   write_csv(bias_df, file.path(eval_dir, study, "bias.csv"))
-  write_csv(bias_wide, "figs/bias_wide.csv")
+  write_csv(bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
   write_csv(rmse_df, file.path(eval_dir, study, "rmse.csv"))
-  write_csv(rmse_wide, "figs/rmse_wide.csv")
+  write_csv(rmse_wide, file.path(eval_dir, study, "rmse_wide.csv"))
   ggsave(file.path(eval_dir, study, "bias_plot.pdf"), bias_plot)
   ggsave(file.path(eval_dir, study, "calibration.pdf"), calibration_plot)
   ggsave(file.path(eval_dir, study, "index_devs.pdf"), index_devs)
