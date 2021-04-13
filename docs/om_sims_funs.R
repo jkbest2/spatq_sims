@@ -41,7 +41,7 @@ om_pars <- function(study, opmod) {
 
   qdevvals <- 10 ^ (-5:1)
   sharedqvals <- seq(0, 1, 0.2)
-  prefintensvals <- c(1, 2, 4, 8, 16)
+  prefintensvals <- c(0, 1, 2, 4, 8, 16)
 
   if (study == "qdevscaling") {
     pars$logq_sd <- qdevvals[opmod]

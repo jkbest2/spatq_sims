@@ -1,3 +1,8 @@
+if (interactive()) {
+  devtools::load_all("~/dev/spatq", helpers = FALSE)
+} else {
+  library(spatq)
+}
 library(hdf5r)
 library(tidyverse)
 

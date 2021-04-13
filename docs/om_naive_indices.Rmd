@@ -1,0 +1,203 @@
+---
+title: Naive indices of abundance
+output:
+  html_document:
+    toc: true
+    toc_depth: 1
+params:
+    root_dir: ".."
+---
+
+```{r echo=FALSE}
+if (interactive()) {
+  devtools::load_all("~/dev/spatq", helpers = FALSE)
+} else {
+  library(spatq)
+}
+library(tidyverse)
+
+knitr::opts_chunk$set(echo = FALSE, results = "hide", cache = TRUE)
+```
+
+```{r}
+studies <- c("qdevscaling",
+             "sharedq",
+             "prefintensity")
+repls <- 1:25
+opmods <- 1:6
+estmods <- c("survey",
+             "spatial_ab",
+             "spatial_q")
+max_T <- 15
+```
+
+
+```{r}
+oms <- cross(list(study = studies,
+                     repl = repls,
+                     opmod = opmods))
+```
+
+```{r}
+pop_df <- map_df(oms,
+                 function(om) {
+                   read_popstate(om$study, om$repl, om$opmod, params$root_dir) %>%
+                     filter(time <= max_T) %>%
+                     mutate(study = om$study, repl = om$repl, opmod = om$opmod) %>%
+                     select(study, repl, opmod, year = time, pop)
+                 })
+```
+
+```{r}
+ggplot(pop_df, aes(x = year, y = pop, group = repl)) +
+  geom_line() +
+  facet_grid(study ~ opmod)
+```
+
+```{r}
+catch_df <- map_df(oms,
+                   function(om) {
+                     read_catch(om$study, om$repl, om$opmod, params$root_dir) %>%
+                       filter(time <= max_T) %>%
+                       mutate(study = om$study, repl = om$repl, opmod = om$opmod,
+                              vessel = factor(vessel_idx, labels = c("Survey", "Commercial"))) %>%
+                       select(study, repl, opmod, year = time, vessel, catch_biomass)
+                   })
+```
+
+```{r}
+cpue_df <- catch_df %>%
+  group_by(study, repl, opmod, year, vessel) %>%
+  summarize(effort = n(),
+            cpue = mean(catch_biomass),
+            .groups = "drop")
+combo_df <- catch_df %>%
+  group_by(study, repl, opmod, year) %>%
+  summarize(effort = n(),
+            cpue = mean(catch_biomass),
+            .groups = "drop") %>%
+  mutate(vessel = "Combo")
+cpue_df <- bind_rows(cpue_df, combo_df) %>%
+  mutate(vessel = factor(vessel, levels = c("Survey", "Commercial", "Combo")))
+```
+
+```{r}
+omindex_df <- left_join(cpue_df, pop_df, by = c("study", "repl", "opmod", "year"))
+```
+
+```{r}
+bias_df <- omindex_df %>%
+  group_by(study, opmod, vessel) %>%
+  nest() %>%
+  mutate(mod = map(data, ~ lm(log(cpue) ~ log(pop) + factor(repl), data = .)),
+         delta = map_dbl(mod, pluck, "coefficients", "log(pop)"),
+         year = map(data, pluck, "year"),
+         cpue = map(data, pluck, "cpue"),
+         pop = map(data, pluck, "pop"),
+         resid = map(mod, residuals))
+```
+
+```{r}
+ggplot(bias_df, aes(x = opmod, y = delta, color = vessel)) +
+  geom_line() +
+  geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
+  facet_grid(study ~ .) +
+  theme(legend.position = "bottom")
+```
+
+# Residuals
+
+```{r}
+resid_df <- bias_df %>%
+  filter(vessel %in% c("Survey", "Commercial")) %>%
+  select(study, opmod, vessel, year, cpue, pop, resid) %>%
+  unnest(c(year, cpue, pop, resid))
+```
+
+## Residuals by population
+
+```{r}
+plot_study_popresid <- function(studyname, data = resid_df) {
+  resid_df %>%
+    filter(study == studyname) %>%
+    ggplot(aes(x = pop, y = resid, color = vessel)) +
+    geom_point() +
+    geom_smooth(color = "black", se = FALSE) +
+    geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+    facet_grid(opmod ~ vessel) +
+    labs(title = studyname)
+}
+```
+
+```{r}
+plot_study_popresid("qdevscaling", resid_df)
+```
+
+```{r}
+plot_study_popresid("sharedq", resid_df)
+```
+
+
+```{r}
+plot_study_popresid("prefintensity", resid_df)
+```
+
+## Residuals by year
+
+```{r}
+plot_study_yearresid <- function(studyname, data = resid_df) {
+  resid_df %>%
+    filter(study == studyname,
+           vessel %in% c("Survey", "Commercial")) %>%
+    ggplot(aes(x = year, y = resid, color = vessel)) +
+    geom_boxplot(aes(x = factor(year))) +
+    geom_jitter(width = 0.25) +
+    geom_smooth(color = "black", se = FALSE) +
+    geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+    facet_grid(opmod ~ vessel) +
+    labs(title = studyname)
+}
+```
+
+
+```{r}
+plot_study_yearresid("qdevscaling", resid_df)
+```
+
+```{r}
+plot_study_yearresid("sharedq", resid_df)
+```
+
+
+```{r}
+plot_study_yearresid("prefintensity", resid_df)
+```
+
+## Residuals by CPUE
+
+```{r}
+plot_study_cpueresid <- function(studyname, data = resid_df) {
+  resid_df %>%
+    filter(study == studyname) %>%
+    ggplot(aes(x = cpue, y = resid, color = vessel)) +
+    geom_point() +
+    geom_smooth(color = "black", se = FALSE) +
+    geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+    facet_grid(opmod ~ vessel, scales = "free_x") +
+    labs(title = studyname)
+}
+```
+
+```{r}
+plot_study_cpueresid("qdevscaling", resid_df)
+```
+
+```{r}
+plot_study_cpueresid("sharedq", resid_df)
+```
+
+
+```{r}
+plot_study_cpueresid("prefintensity", resid_df)
+```
+
