@@ -18,3 +18,4 @@ coordref.csv
 /docs/gss2020/
 /misspec_kappa/
 slurm-*.out
+*_cache
