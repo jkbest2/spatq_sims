@@ -29,5 +29,4 @@
 
 #module load contrib/julia/1.3
 
-julia --project -p 28 --check-bounds=no -L 20_gensims.jl -- 21_runsims.jl 25
-
+julia --project -p 28 --check-bounds=no -L 20_gensims.jl -- 21_runsims.jl 100

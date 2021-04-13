@@ -27,5 +27,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-julia --project -- 10_prepsims.jl 25
-
+julia --project -- 10_prepsims.jl 100

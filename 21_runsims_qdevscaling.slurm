@@ -14,7 +14,7 @@
 #SBATCH --ntasks-per-node=28
 
 ## Walltime (2 hours)
-#SBATCH --time=1:00:00
+#SBATCH --time=4:00:00
 
 ## Memory per node
 #SBATCH --mem=120G
@@ -27,4 +27,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-julia --project -p 7 --check-bounds=no -L 20_gensims.jl -- 21_runsims_qdevscaling.jl 25
+julia --project -p 7 --check-bounds=no -L 20_gensims.jl -- 21_runsims_qdevscaling.jl 100
