@@ -1,0 +1,86 @@
+---
+title: Expected vs realized catch
+output:
+  html_document:
+    toc: true
+    toc_depth: 1
+params:
+    root_dir: ".."
+---
+
+```{r}
+if (interactive()) {
+  devtools::load_all("~/dev/spatq", helpers = FALSE)
+} else {
+  library(spatq)
+}
+library(hdf5r)
+library(tidyverse)
+```
+
+```{r}
+studies <- c("qdevscaling",
+             "sharedq",
+             "prefintensity")
+repls <- 1:100
+oms <- 1:6
+```
+
+```{r}
+catch_df <- cross_df(list(opmod = oms, repl = repls, study = studies)) %>%
+  rowwise() %>%
+  mutate(catch = list(read_catch(study, repl, opmod))) %>%
+  unnest(cols = c(catch))
+```
+
+```{r}
+survey_catch_df <- catch_df %>%
+  filter(vessel_idx == 1)
+```
+
+```{r}
+survey_pop_df <- survey_catch_df %>%
+  select(study, repl, opmod, time, loc_idx) %>%
+  group_by(study, repl, opmod) %>%
+  nest() %>%
+  mutate(simfiles = list(sim_file_paths(study, repl, opmod, root_dir))) %>%
+  mutate(poph5 = map_chr(simfiles, pluck, "poph5"))
+
+survey_pop_df2 <- survey_pop_df %>%
+  rowwise() %>%
+  mutate(spatidx = list(matrix(c(arrayInd(data$loc_idx, c(100, 100)), data$time), ncol = 3)))
+```
+
+```{r}
+get_pop <- function(file, idx) {
+  h5 <- h5file(file, mode = "r")
+  apply(idx, 1,
+        function(i) {
+          h5[["popstate"]][i[1], i[2], i[3]]
+        })
+}
+```
+
+```{r}
+## true_pop <- map2(survey_pop_df2$poph5, survey_pop_df2$spatidx  
+survey_pop_df3 <- survey_pop_df2 %>%
+  rowwise() %>%
+  mutate(true_pop = list(get_pop(poph5, spatidx)))
+```
+
+```{r}
+survey_pop <- survey_pop_df3 %>%
+  select(study, repl, opmod, data, true_pop) %>%
+  unnest(cols = c(data, true_pop)) %>%
+  right_join(survey_catch_df, by = c("study", "repl", "opmod", "time", "loc_idx"))
+```
+
+```{r}
+ggplot(survey_pop, aes(x = true_pop, y = catch_biomass)) +
+  geom_hex() +
+  geom_abline(slope = 0.2, intercept = 0) +
+  geom_abline(slope = 1, intercept = 0) +
+  scale_fill_viridis_c() +
+  coord_equal() +
+  facet_grid(study ~ opmod)
+```
