@@ -108,8 +108,8 @@ ggplot(bias_df, aes(x = opmod, y = delta, color = vessel)) +
 ```{r}
 resid_df <- bias_df %>%
   filter(vessel %in% c("Survey", "Commercial")) %>%
-  select(study, opmod, vessel, year, cpue, pop, resid) %>%
-  unnest(c(year, cpue, pop, resid))
+  select(study, opmod, vessel, year, cpue, pop, resid, cpue_hat) %>%
+  unnest(c(year, cpue, pop, resid, cpue_hat))
 ```
 
 ## Residuals by CPUE
