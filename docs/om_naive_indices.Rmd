@@ -16,7 +16,7 @@ if (interactive()) {
 }
 library(tidyverse)
 
-knitr::opts_chunk$set(echo = FALSE, results = "hide", cache = TRUE)
+knitr::opts_chunk$set(echo = FALSE, results = "hide", cache.lazy = FALSE)
 ```
 
 ```{r}
