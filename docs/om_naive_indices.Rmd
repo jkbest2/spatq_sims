@@ -23,19 +23,16 @@ knitr::opts_chunk$set(echo = FALSE, results = "hide", cache = TRUE)
 studies <- c("qdevscaling",
              "sharedq",
              "prefintensity")
-repls <- 1:25
+repls <- 1:100
 opmods <- 1:6
-estmods <- c("survey",
-             "spatial_ab",
-             "spatial_q")
-max_T <- 15
+max_T <- 25
 ```
 
 
 ```{r}
 oms <- cross(list(study = studies,
-                     repl = repls,
-                     opmod = opmods))
+                  repl = repls,
+                  opmod = opmods))
 ```
 
 ```{r}
@@ -94,7 +91,8 @@ bias_df <- omindex_df %>%
          year = map(data, pluck, "year"),
          cpue = map(data, pluck, "cpue"),
          pop = map(data, pluck, "pop"),
-         resid = map(mod, residuals))
+         resid = map(mod, residuals),
+         cpue_hat = map(mod, predict))
 ```
 
 ```{r}
@@ -114,72 +112,13 @@ resid_df <- bias_df %>%
   unnest(c(year, cpue, pop, resid))
 ```
 
-## Residuals by population
-
-```{r}
-plot_study_popresid <- function(studyname, data = resid_df) {
-  resid_df %>%
-    filter(study == studyname) %>%
-    ggplot(aes(x = pop, y = resid, color = vessel)) +
-    geom_point() +
-    geom_smooth(color = "black", se = FALSE) +
-    geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
-    facet_grid(opmod ~ vessel) +
-    labs(title = studyname)
-}
-```
-
-```{r}
-plot_study_popresid("qdevscaling", resid_df)
-```
-
-```{r}
-plot_study_popresid("sharedq", resid_df)
-```
-
-
-```{r}
-plot_study_popresid("prefintensity", resid_df)
-```
-
-## Residuals by year
-
-```{r}
-plot_study_yearresid <- function(studyname, data = resid_df) {
-  resid_df %>%
-    filter(study == studyname,
-           vessel %in% c("Survey", "Commercial")) %>%
-    ggplot(aes(x = year, y = resid, color = vessel)) +
-    geom_boxplot(aes(x = factor(year))) +
-    geom_jitter(width = 0.25) +
-    geom_smooth(color = "black", se = FALSE) +
-    geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
-    facet_grid(opmod ~ vessel) +
-    labs(title = studyname)
-}
-```
-
-
-```{r}
-plot_study_yearresid("qdevscaling", resid_df)
-```
-
-```{r}
-plot_study_yearresid("sharedq", resid_df)
-```
-
-
-```{r}
-plot_study_yearresid("prefintensity", resid_df)
-```
-
 ## Residuals by CPUE
 
 ```{r}
-plot_study_cpueresid <- function(studyname, data = resid_df) {
+plot_study_cpueresid <- function(studyname, resid_df) {
   resid_df %>%
     filter(study == studyname) %>%
-    ggplot(aes(x = cpue, y = resid, color = vessel)) +
+    ggplot(aes(x = cpue_hat, y = resid, color = vessel)) +
     geom_point() +
     geom_smooth(color = "black", se = FALSE) +
     geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
@@ -200,4 +139,3 @@ plot_study_cpueresid("sharedq", resid_df)
 ```{r}
 plot_study_cpueresid("prefintensity", resid_df)
 ```
-
