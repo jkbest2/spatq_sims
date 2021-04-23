@@ -29,7 +29,7 @@ oms <- 1:6
 ```{r}
 catch_df <- cross_df(list(opmod = oms, repl = repls, study = studies)) %>%
   rowwise() %>%
-  mutate(catch = list(read_catch(study, repl, opmod))) %>%
+  mutate(catch = list(read_catch(study, repl, opmod, root_dir = params$root_dir))) %>%
   unnest(cols = c(catch))
 ```
 
