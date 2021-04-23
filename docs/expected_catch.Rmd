@@ -43,7 +43,7 @@ survey_pop_df <- survey_catch_df %>%
   select(study, repl, opmod, time, loc_idx) %>%
   group_by(study, repl, opmod) %>%
   nest() %>%
-  mutate(simfiles = list(sim_file_paths(study, repl, opmod, root_dir))) %>%
+  mutate(simfiles = list(sim_file_paths(study, repl, opmod, params$root_dir))) %>%
   mutate(poph5 = map_chr(simfiles, pluck, "poph5"))
 
 survey_pop_df2 <- survey_pop_df %>%
