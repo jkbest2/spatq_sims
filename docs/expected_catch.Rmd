@@ -23,11 +23,11 @@ studies <- c("qdevscaling",
              "sharedq",
              "prefintensity")
 repls <- 1:100
-oms <- 1:6
+opmods <- 1:6
 ```
 
 ```{r}
-catch_df <- cross_df(list(opmod = oms, repl = repls, study = studies)) %>%
+catch_df <- cross_df(list(opmod = opmods, repl = repls, study = studies)) %>%
   rowwise() %>%
   mutate(catch = list(read_catch(study, repl, opmod, root_dir = params$root_dir))) %>%
   unnest(cols = c(catch))
@@ -54,15 +54,12 @@ survey_pop_df2 <- survey_pop_df %>%
 ```{r}
 get_pop <- function(file, idx) {
   h5 <- h5file(file, mode = "r")
-  apply(idx, 1,
-        function(i) {
-          h5[["popstate"]][i[1], i[2], i[3]]
-        })
+  pop <- h5[["popstate"]]$read()
+  pop[idx]
 }
 ```
 
 ```{r}
-## true_pop <- map2(survey_pop_df2$poph5, survey_pop_df2$spatidx  
 survey_pop_df3 <- survey_pop_df2 %>%
   rowwise() %>%
   mutate(true_pop = list(get_pop(poph5, spatidx)))
@@ -84,3 +81,21 @@ ggplot(survey_pop, aes(x = true_pop, y = catch_biomass)) +
   coord_equal() +
   facet_grid(study ~ opmod)
 ```
+
+```{r}
+survey_pop %>%
+  mutate(sat = true_pop == catch_biomass) %>%
+  group_by(repl, time) %>%
+  summarize(psat = mean(sat)) %>%
+  ggplot(aes(x = factor(time), y = psat)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.25)
+```
+
+```{r}
+survey_pop %>%
+  mutate(frac = catch_biomass / true_pop) %>%
+  ggplot(aes(x = frac)) +
+  geom_histogram()
+```
+
