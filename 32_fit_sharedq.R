@@ -1,4 +1,4 @@
-## if script is run in the REPL interactively, use the local `spatq` package and
+## If script is run in the REPL interactively, use the local `spatq` package and
 ## manually set a range of replicates to fit, because they were probably not
 ## passed as command line arguments when R was started. Otherwise (typically on
 ## Hyak via SLURM), use the installed version of `spatq` and read in the
@@ -12,6 +12,8 @@ if (interactive()) {
 }
 library(tidyverse)
 
+## Where are we working?
+root_dir <- "."
 ## Which simulation study are we fitting?
 study <- "sharedq"
 ## What range of replicates are going to be fit?
@@ -34,10 +36,11 @@ specify_fits <- function(study, repls, opmods, estmods, root_dir = ".") {
   res_paths <- all_res_file_paths(study, repls, opmods, estmods, root_dir)
 
   df <- cross_df(list(estmod = estmods, opmod = opmods, repl = repls)) %>%
-    mutate(Rdata = res_paths$rdata,
-           index = res_paths$indexcsv,
+    mutate(study = study,
+           Rdata = res_paths$rdata,
            sub_df = map(estmod, specify_subset),
-           estd = map(estmod, estmod_pars))
+           estd = map(estmod, estmod_pars),
+           root_dir = root_dir)
   df
 }
 
@@ -52,8 +55,8 @@ specify_subset <- function(estmod) {
   sub_df <- switch(estmod,
                    ## Don't use any fish-dep data for survey index
                    survey = data.frame(vessel_idx = 2, n = 0),
-                   spatial_ab = NULL,
-                   spatial_q = NULL)
+                   spatial_ab = data.frame(vessel_idx = 2, n = 4000),
+                   spatial_q = data.frame(vessel_idx = 2, n = 4000))
   sub_df
 }
 
@@ -106,14 +109,14 @@ fit_list <- fits_todo(specify_fits(study = study,
 
 ## Iterate over rows to fit each model
 for (idx in seq_len(nrow(fit_list))) {
-  spec <- fit_list[idx, ]
+  spec <- spatq_simstudyspec(fit_list[idx, ])
 
   setup <- spatq_simsetup(repl = spec$repl,
                           study,
                           spec$opmod,
                           spec$sub_df[[1]],
                           max_T = max_T,
-                          root_dir = ".",
+                          root_dir = root_dir,
                           index_step = 1,
                           spec_estd = spec$estd[[1]])
   obj <- spatq_obj(setup,
@@ -139,50 +142,6 @@ for (idx in seq_len(nrow(fit_list))) {
     sdreport_spatq(obj),
     error = function(e) list(fail = TRUE))
 
-  saveRDS(list(spec = spec, fit = fit, lpb = lpb, rep = rep, sdr = sdr),
-          spec$Rdata)
-
-  ## Read true population state and calculate index
-  true_index <- read_popstate(study = study,
-                              repl = spec$repl,
-                              opmod = spec$opmod,
-                              root_dir = ".") %>%
-    rename(year = time,
-           raw_true = pop) %>%
-    filter(year <= max_T) %>%
-    mutate(index_true = rescale_index(raw_true)$index)
-
-  if (!("fail" %in% names(sdr))) {
-    ## Organize details for estimated index
-    which_index <- which(names(sdr$value) == "Index")
-    est_index <- tibble(repl = spec$repl,
-                        opmod = spec$opmod,
-                        estmod = spec$estmod,
-                        year = 1:max_T,
-                        raw_est = sdr$value[which_index],
-                        index_est = rescale_index(raw_est)$index,
-                        raw_unb = sdr$unbiased$value[which_index],
-                        index_unb = rescale_index(raw_unb)$index,
-                        raw_sd = sdr$sd[which_index],
-                        index_sd = rescale_index(raw_est, raw_sd)$sd,
-                        raw_unb_sd = sdr$unbiased$sd,
-                        unb_sd = rescale_index(raw_unb, raw_unb_sd)$sd)
-  } else {
-    est_index <- tibble(repl = spec$repl,
-                        opmod = spec$opmod,
-                        estmod = spec$estmod,
-                        year = 1:max_T,
-                        raw_est = rep(NA, max_T),
-                        index_est = rep(NA, max_T),
-                        raw_unb = rep(NA, max_T),
-                        index_unb = rep(NA, max_T),
-                        raw_sd = rep(NA, max_T),
-                        index_sd = rep(NA, max_T),
-                        raw_unb_sd = rep(NA, max_T),
-                        unb_sd = rep(NA, max_T))
-
-  }
-  ## Join and write to CSV file
-  index_df <- left_join(est_index, true_index, by = "year")
-  write_csv(index_df, spec$index)
+  save_fit(spec, fit, lpb, rep, sdr)
+  save_index(spec, sdr, feather = FALSE)
 }
