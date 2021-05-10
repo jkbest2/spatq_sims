@@ -14,7 +14,7 @@ if (interactive()) {
 } else {
   library(spatq)
 }
-library(hdf5r)
+## library(hdf5r)
 library(tidyverse)
 ```
 
@@ -24,12 +24,16 @@ studies <- c("qdevscaling",
              "prefintensity")
 repls <- 1:100
 opmods <- 1:6
+studies <- "qdevscaling"
+repls <- 1:5
+opmods <- 1:5
+
 ```
 
 ```{r}
 catch_df <- cross_df(list(opmod = opmods, repl = repls, study = studies)) %>%
   rowwise() %>%
-  mutate(catch = list(read_catch(study, repl, opmod, root_dir = params$root_dir))) %>%
+  mutate(catch = list(read_catch(study, repl, opmod, root_dir = params$root_dir, feather = FALSE))) %>%
   unnest(cols = c(catch))
 ```
 
@@ -40,21 +44,22 @@ survey_catch_df <- catch_df %>%
 
 ```{r}
 survey_pop_df <- survey_catch_df %>%
-  select(study, repl, opmod, time, loc_idx) %>%
+  select(study, repl, opmod, year, loc_idx) %>%
   group_by(study, repl, opmod) %>%
   nest() %>%
   mutate(simfiles = list(sim_file_paths(study, repl, opmod, params$root_dir))) %>%
-  mutate(poph5 = map_chr(simfiles, pluck, "poph5"))
+  mutate(pop_h5 = map_chr(simfiles, pluck, "pop_h5"))
 
 survey_pop_df2 <- survey_pop_df %>%
   rowwise() %>%
-  mutate(spatidx = list(matrix(c(arrayInd(data$loc_idx, c(100, 100)), data$time), ncol = 3)))
+  mutate(spatidx = list(matrix(c(arrayInd(data$loc_idx, c(100, 100)), data$year), ncol = 3)))
 ```
 
 ```{r}
-get_pop <- function(file, idx) {
-  h5 <- h5file(file, mode = "r")
-  pop <- h5[["popstate"]]$read()
+get_pop <- function(study, repl, opmod, root_dir, idx) {
+  ## h5 <- h5file(file, mode = "r")
+  ## pop <- h5[["popstate"]]$read()
+  pop <- read_popstate(study, repl, opmod, root_dir, filetype = "h5")
   pop[idx]
 }
 ```
@@ -62,14 +67,16 @@ get_pop <- function(file, idx) {
 ```{r}
 survey_pop_df3 <- survey_pop_df2 %>%
   rowwise() %>%
-  mutate(true_pop = list(get_pop(poph5, spatidx)))
+  mutate(true_pop = list(get_pop(study, repl, opmod,
+                                params$root_dir,
+                                spatidx)))
 ```
 
 ```{r}
 survey_pop <- survey_pop_df3 %>%
   select(study, repl, opmod, data, true_pop) %>%
   unnest(cols = c(data, true_pop)) %>%
-  right_join(survey_catch_df, by = c("study", "repl", "opmod", "time", "loc_idx"))
+  right_join(survey_catch_df, by = c("study", "repl", "opmod", "year", "loc_idx"))
 ```
 
 ```{r}
@@ -85,9 +92,9 @@ ggplot(survey_pop, aes(x = true_pop, y = catch_biomass)) +
 ```{r}
 survey_pop %>%
   mutate(sat = true_pop == catch_biomass) %>%
-  group_by(repl, time) %>%
+  group_by(repl, year) %>%
   summarize(psat = mean(sat)) %>%
-  ggplot(aes(x = factor(time), y = psat)) +
+  ggplot(aes(x = factor(year), y = psat)) +
   geom_boxplot() +
   geom_jitter(width = 0.25)
 ```
