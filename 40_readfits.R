@@ -41,49 +41,63 @@ get_mgc <- function(fitlist) {
   pluck(fitlist, "fit", attr_getter("mgc"))
 }
 
-read_index_csv <- function(filename) {
-  read_csv(filename,
-           col_types = cols(
-             ## repl = col_factor(levels = repls),
-             repl = col_integer(),
-             ## opmod = col_factor(levels = opmods),
-             opmod = col_integer(),
-             estmod = col_factor(levels = estmods),
-             year = col_integer(),
-             raw_est = col_double(),
-             index_est = col_double(),
-             raw_unb = col_double(),
-             index_unb = col_double(),
-             raw_sd = col_double(),
-             index_sd = col_double(),
-             raw_unb_sd = col_double(),
-             unb_sd = col_double(),
-             raw_true = col_double(),
-             index_true = col_double())) %>%
-    mutate(repl = factor(repl, levels = repls),
-           opmod = factor(opmod, levels = opmods))
+get_om_parval <- function(study, opmod = 1:6) {
+  studyvals <- switch(study,
+                      qdevscaling = 10 ^ seq(-3, -0.5, 0.5),
+                      sharedq = seq(0, 1, 0.2),
+                      prefintensity = c(0, 1, 2, 4, 8, 16))
+  studyvals[opmod]
 }
 
-read_all_indices <- function(csv_list) {
-  map_df(csv_list, read_index_csv)
+get_om_parlabel <- function(study) {
+  switch(study,
+         qdevscaling = "log catchability deviation SD",
+         sharedq = "Prop shared catchabilty dev",
+         prefintensity = "Preference power")
 }
+
+## read_all_indices <- function(csv_list) {
+##   map_df(csv_list, read_index_csv)
+## }
 
 evaluate_bias <- function(index_df) {
   index_df %>%
     group_by(opmod, estmod) %>%
     nest() %>%
-    mutate(mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true), data = .x)),
+    mutate(mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true),
+                                data = .x)),
            coef = map(mod, coef),
            delta = map_dbl(coef, pluck, "log(raw_true)")) %>%
-    select(opmod, estmod, delta)
+    select(opmod, estmod, delta) %>%
+    mutate(parval = map2_dbl(study, opmod, get_om_parval))
+}
+
+plot_bias2 <- function(index_df) {
+  bias_df <- evaluate_bias(index_df)
+  ggplot(bias_df, aes(x = parval, y = delta, color = estmod)) +
+    geom_line() +
+    geom_point() +
+    geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
+    labs(x = get_om_parlabel(index_df$study[1]),
+         y = "δ bias metric")
 }
 
 evaluate_rmse <- function(index_df) {
   index_df %>%
     mutate(sq_err = (index_unb - index_true)^2) %>%
     group_by(opmod, estmod) %>%
-    summarize(rmse = sqrt(mean(sq_err))) %>%
-    select(opmod, estmod, rmse)
+    summarize(rmse = sqrt(mean(sq_err)), .groups = "drop") %>%
+    select(opmod, estmod, rmse) %>%
+    mutate(parval = map2_dbl(study, opmod, get_om_parval))
+}
+
+plot_rmse2 <- function(index_df) {
+  rmse_df <- evaluate_rmse(index_df)
+  ggplot(rmse_df, aes(x = parval, y = rmse, color = estmod)) +
+    geom_line() +
+    geom_point() +
+    labs(x = get_om_parlabel(index_df$study[1]),
+         y = "RMSE")
 }
 
 evaluate_calibration <- function(index_df) {
@@ -127,7 +141,9 @@ pdonly <- FALSE
 
 for (study in studies) {
   index_df <- read_all_indices(results[[study]]$indexcsv) %>%
-    filter(complete.cases(.))
+    filter(complete.cases(.)) %>%
+    mutate(study = study,
+           parval = map2_dbl(study, opmod, get_om_parval))
 
   convg_df <- map_dfr(results[[study]]$rdata,
                       ~ readRDS(.)$spec) %>%
@@ -176,18 +192,24 @@ for (study in studies) {
                 values_from = rmse)
 
   bias_plot <- plot_bias(index_df)
+  bias2_plot <- plot_bias2(index_df)
   calibration_plot <- evaluate_calibration(index_df)
   index_devs <- plot_index_devs(index_df)
+  rmse_plot <- plot_rmse2(index_df)
 
   write_csv(pdhess_df, file.path(eval_dir, study, "pdhess_wide.csv"))
   write_csv(bias_df, file.path(eval_dir, study, "bias.csv"))
   write_csv(bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
   write_csv(rmse_df, file.path(eval_dir, study, "rmse.csv"))
   write_csv(rmse_wide, file.path(eval_dir, study, "rmse_wide.csv"))
-  ggsave(file.path(eval_dir, study, "bias_plot.pdf"), bias_plot)
-  ggsave(file.path(eval_dir, study, "calibration.pdf"), calibration_plot)
-  ggsave(file.path(eval_dir, study, "index_devs.pdf"), index_devs)
+  ggsave(file.path(eval_dir, study, "bias_plot.svg"), bias_plot)
+  ggsave(file.path(eval_dir, study, "bias2_plot.svg"), bias2_plot)
+  ggsave(file.path(eval_dir, study, "calibration.svg"), calibration_plot)
+  ggsave(file.path(eval_dir, study, "index_devs.svg"), index_devs)
+  ggsave(file.path(eval_dir, study, "rmse_plot.svg"), rmse_plot)
   ggsave(file.path(eval_dir, study, "bias_plot.png"), width = 7, height = 7, bias_plot)
+  ggsave(file.path(eval_dir, study, "bias2_plot.png"), bias2_plot)
   ggsave(file.path(eval_dir, study, "calibration.png"), width = 7, height = 7, calibration_plot)
   ggsave(file.path(eval_dir, study, "index_devs.png"), width = 7, height = 7, index_devs)
+  ggsave(file.path(eval_dir, study, "rmse_plot.png"), rmse_plot)
 }
