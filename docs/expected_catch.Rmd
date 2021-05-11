@@ -24,16 +24,12 @@ studies <- c("qdevscaling",
              "prefintensity")
 repls <- 1:100
 opmods <- 1:6
-studies <- "qdevscaling"
-repls <- 1:5
-opmods <- 1:5
-
 ```
 
 ```{r}
 catch_df <- cross_df(list(opmod = opmods, repl = repls, study = studies)) %>%
   rowwise() %>%
-  mutate(catch = list(read_catch(study, repl, opmod, root_dir = params$root_dir, feather = FALSE))) %>%
+  mutate(catch = list(read_catch(study, repl, opmod, root_dir = params$root_dir, feather = TRUE))) %>%
   unnest(cols = c(catch))
 ```
 
@@ -57,8 +53,6 @@ survey_pop_df2 <- survey_pop_df %>%
 
 ```{r}
 get_pop <- function(study, repl, opmod, root_dir, idx) {
-  ## h5 <- h5file(file, mode = "r")
-  ## pop <- h5[["popstate"]]$read()
   pop <- read_popstate(study, repl, opmod, root_dir, filetype = "h5")
   pop[idx]
 }

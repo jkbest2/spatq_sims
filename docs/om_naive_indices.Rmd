@@ -38,10 +38,10 @@ oms <- cross(list(study = studies,
 ```{r}
 pop_df <- map_df(oms,
                  function(om) {
-                   read_popstate(om$study, om$repl, om$opmod, params$root_dir) %>%
-                     filter(time <= max_T) %>%
+                   read_popstate(om$study, om$repl, om$opmod, params$root_dir, filetype = "feather") %>%
+                     filter(year <= max_T) %>%
                      mutate(study = om$study, repl = om$repl, opmod = om$opmod) %>%
-                     select(study, repl, opmod, year = time, pop)
+                     select(study, repl, opmod, year, pop)
                  })
 ```
 
@@ -54,11 +54,11 @@ ggplot(pop_df, aes(x = year, y = pop, group = repl)) +
 ```{r}
 catch_df <- map_df(oms,
                    function(om) {
-                     read_catch(om$study, om$repl, om$opmod, params$root_dir) %>%
-                       filter(time <= max_T) %>%
+                     read_catch(om$study, om$repl, om$opmod, params$root_dir, feather = TRUE) %>%
+                       filter(year <= max_T) %>%
                        mutate(study = om$study, repl = om$repl, opmod = om$opmod,
                               vessel = factor(vessel_idx, labels = c("Survey", "Commercial"))) %>%
-                       select(study, repl, opmod, year = time, vessel, catch_biomass)
+                       select(study, repl, opmod, year, vessel, catch_biomass)
                    })
 ```
 
