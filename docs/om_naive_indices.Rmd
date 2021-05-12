@@ -56,12 +56,12 @@ cpue_df <- map_df(oms,
                    function(om) {
                      read_catch(om$study, om$repl, om$opmod, params$root_dir, feather = TRUE) %>%
                        filter(year <= max_T) %>%
-                       mutate(study = om$study, repl = om$repl, opmod = om$opmod,
-                              vessel = factor(vessel_idx, labels = c("Survey", "Commercial"))) %>%
-                       group_by(year, vessel) %>%
+                       group_by(year, vessel_idx) %>%
                        summarize(effort = n(),
                                  cpue = mean(catch_biomass),
                                  .groups = "drop") %>%
+                       mutate(study = om$study, repl = om$repl, opmod = om$opmod,
+                              vessel = factor(vessel_idx, labels = c("Survey", "Commercial"))) %>%
                        select(study, repl, opmod, year, vessel, cpue)
                    })
 ```
