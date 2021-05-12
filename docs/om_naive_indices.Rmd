@@ -52,30 +52,18 @@ ggplot(pop_df, aes(x = year, y = pop, group = repl)) +
 ```
 
 ```{r}
-catch_df <- map_df(oms,
+cpue_df <- map_df(oms,
                    function(om) {
                      read_catch(om$study, om$repl, om$opmod, params$root_dir, feather = TRUE) %>%
                        filter(year <= max_T) %>%
                        mutate(study = om$study, repl = om$repl, opmod = om$opmod,
                               vessel = factor(vessel_idx, labels = c("Survey", "Commercial"))) %>%
-                       select(study, repl, opmod, year, vessel, catch_biomass)
+                       group_by(year, vessel) %>%
+                       summarize(effort = n(),
+                                 cpue = mean(catch_biomass),
+                                 .groups = "drop") %>%
+                       select(study, repl, opmod, year, vessel, cpue)
                    })
-```
-
-```{r}
-cpue_df <- catch_df %>%
-  group_by(study, repl, opmod, year, vessel) %>%
-  summarize(effort = n(),
-            cpue = mean(catch_biomass),
-            .groups = "drop")
-combo_df <- catch_df %>%
-  group_by(study, repl, opmod, year) %>%
-  summarize(effort = n(),
-            cpue = mean(catch_biomass),
-            .groups = "drop") %>%
-  mutate(vessel = "Combo")
-cpue_df <- bind_rows(cpue_df, combo_df) %>%
-  mutate(vessel = factor(vessel, levels = c("Survey", "Commercial", "Combo")))
 ```
 
 ```{r}
@@ -134,7 +122,6 @@ plot_study_cpueresid("qdevscaling", resid_df)
 ```{r}
 plot_study_cpueresid("sharedq", resid_df)
 ```
-
 
 ```{r}
 plot_study_cpueresid("prefintensity", resid_df)
