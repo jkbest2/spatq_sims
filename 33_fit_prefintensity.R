@@ -109,7 +109,7 @@ fit_list <- fits_todo(specify_fits(study = study,
 
 ## Iterate over rows to fit each model
 for (idx in seq_len(nrow(fit_list))) {
-  spec <- spatq_simstudyspec(fit_list[idx, ])
+  spec <- spatq_simstudyspec(as.list(fit_list[idx, ]))
 
   setup <- spatq_simsetup(repl = spec$repl,
                           study,
