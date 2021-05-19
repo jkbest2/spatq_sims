@@ -151,7 +151,8 @@ for (study in studies) {
 
   pdhess_df <- res_df %>%
     group_by(opmod, estmod) %>%
-    summarize(pdhess = sum(pdhess)) %>%
+    summarize(pdhess = sum(pdhess),
+              .groups = "drop") %>%
     pivot_wider(names_from = opmod, values_from = pdhess)
 
   index_df <- res_df %>%
@@ -171,8 +172,9 @@ for (study in studies) {
   bias_wide <- bias_df %>%
     ungroup() %>%
     select(-opmod) %>%
-    pivot_wider(names_from = signif(parval, 2),
+    pivot_wider(names_from = parval,
                 values_from = delta)
+
   rmse_df <- evaluate_rmse(index_df)
   rmse_wide <- rmse_df %>%
     select(-opmod) %>%
