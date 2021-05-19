@@ -97,7 +97,7 @@ estmod_pars <- function(estmod) {
                                                   phi_w = FALSE),
                                        psi = FALSE,
                                        kappa_map =
-                                         c(1, NA, NA, NA, 2, NA, NA, NA),
+                                         c(1, NA, NA, NA, 1, NA, NA, NA),
                                        obs_lik = 1L))
 }
 
