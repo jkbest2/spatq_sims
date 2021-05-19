@@ -15,23 +15,18 @@ library(tidyverse)
 ## Which simulation study are we fitting?
 studies <- c("qdevscaling", "sharedq", "prefintensity")
 ## What range of replicates are going to be fit?
-repls <- repl_arg[1]:repl_arg[2]
+repls <- factor(repl_arg[1]:repl_arg[2])
 ## How many years to fit?
 max_T <- 15
 ## Names of the operating models
-opmods <- 1:6
+opmods <- factor(1:6)
 ## Names of the estimation models
-estmods <- c("survey",     # Survey-only
-             "spatial_ab", # All data, spatial abundance
-             "spatial_q")  # All data, spatial abundance + catchability
-
-results <- lapply(studies,
-                  all_res_file_paths,
-                  repls = repls,
-                  opmods = opmods,
-                  estmods = estmods,
-                  root_dir = ".")
-names(results) <- studies
+estmods <- factor(c("survey",     # Survey-only
+                    "spatial_ab", # All data, spatial abundance
+                    "spatial_q"),  # All data, spatial abundance + catchability
+                  levels = c("survey",
+                             "spatial_ab",
+                             "spatial_q"))
 
 get_convcode <- function(fitlist) {
   pluck(fitlist, "fit", "convergence")
@@ -137,44 +132,34 @@ plot_bias <- function(index_df) {
 }
 
 eval_dir <- "evaluation"
-pdonly <- FALSE
+pdonly <- TRUE
 
 for (study in studies) {
-  index_df <- read_all_indices(results[[study]]$indexcsv) %>%
-    filter(complete.cases(.)) %>%
-    mutate(study = study,
-           parval = map2_dbl(study, opmod, get_om_parval))
+  spec_df <- cross_df(list(study = study,
+                           repl = repls,
+                           opmod = opmods,
+                           estmod = estmods)) %>%
+    rowwise() %>%
+    mutate(spec = list(spatq_simstudyspec(study, repl = repl, opmod = opmod, estmod = estmod)))
 
-  convg_df <- map_dfr(results[[study]]$rdata,
-                      ~ readRDS(.)$spec) %>%
-    select(estmod, opmod, repl, Rdata) %>%
-    mutate(repl = factor(repl, levels = 1:50),
-            convcode = map_dbl(results[[study]]$rdata,
-                              ~ readRDS(.)$fit$convergence),
-            outer_mgc = map_dbl(results[[study]]$rdata,
-                                ~ max(readRDS(.)$fit$grad)),
-            pdhess = map_lgl(results[[study]]$rdata,
-                            function(fn) {
-              pdhess <- readRDS(fn)$sdr$pdHess
-              if(is.null(pdhess)) pdhess <- FALSE
-              return(pdhess)
-            })) %>%
-    select(estmod, opmod, repl, pdhess) %>%
-    mutate(opmod = factor(opmod, levels = opmods),
-           estmod = factor(estmod, levels = estmods))
+  index_df <- map_df(spec_df$spec, read_index)
+  res_df <- spec_df %>%
+    mutate(rdata = list(read_rdata(spec)))
+  res_df <- spec_df %>%
+    mutate(res = list(read_rdata(spec)),
+           pdhess = posdefhess(res))
 
-  index_df <- left_join(index_df, convg_df,
-                        by = c("estmod", "opmod", "repl"))
-
-  pdhess_df <- index_df %>%
-    group_by(estmod, opmod, repl) %>%
-    summarize(pdhess = all(pdhess)) %>%
+  pdhess_df <- res_df %>%
+    group_by(opmod, estmod) %>%
     summarize(pdhess = sum(pdhess)) %>%
     pivot_wider(names_from = opmod, values_from = pdhess)
 
-  if (pdonly) {
+  index_df <- res_df %>%
+    select(study, repl, opmod, estmod, pdhess) %>%
+    right_join(index_df, by = c("study", "repl", "opmod", "estmod"))
+
+  if (pdonly)
       index_df <- filter(index_df, pdhess)
-  }
 
   if (!file.exists(eval_dir))
     dir.create(eval_dir)
@@ -184,11 +169,14 @@ for (study in studies) {
 
   bias_df <- evaluate_bias(index_df)
   bias_wide <- bias_df %>%
-    pivot_wider(names_from = opmod,
+    ungroup() %>%
+    select(-opmod) %>%
+    pivot_wider(names_from = signif(parval, 2),
                 values_from = delta)
   rmse_df <- evaluate_rmse(index_df)
   rmse_wide <- rmse_df %>%
-    pivot_wider(names_from = opmod,
+    select(-opmod) %>%
+    pivot_wider(names_from = parval,
                 values_from = rmse)
 
   bias_plot <- plot_bias(index_df)
