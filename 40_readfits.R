@@ -13,7 +13,10 @@ if (interactive()) {
 library(tidyverse)
 
 ## Which simulation study are we fitting?
-studies <- c("qdevscaling", "sharedq", "prefintensity")
+studies <- c("qdevscaling",
+             "sharedq",
+             "prefintensity",
+             "densdepq")
 ## What range of replicates are going to be fit?
 repls <- factor(repl_arg[1]:repl_arg[2])
 ## How many years to fit?
@@ -40,7 +43,8 @@ get_om_parval <- function(study, opmod = 1:6) {
   studyvals <- switch(study,
                       qdevscaling = 10 ^ seq(-3, -0.5, 0.5),
                       sharedq = seq(0, 1, 0.2),
-                      prefintensity = c(0, 1, 2, 4, 8, 16))
+                      prefintensity = c(0, 1, 2, 4, 8, 16),
+                      densedepq = seq(0, 1.25, 0.25))
   studyvals[opmod]
 }
 
@@ -48,12 +52,9 @@ get_om_parlabel <- function(study) {
   switch(study,
          qdevscaling = "log catchability deviation SD",
          sharedq = "Prop shared catchabilty dev",
-         prefintensity = "Preference power")
+         prefintensity = "Preference power",
+         densdepq = "Density dependent multiplier")
 }
-
-## read_all_indices <- function(csv_list) {
-##   map_df(csv_list, read_index_csv)
-## }
 
 evaluate_bias <- function(index_df) {
   index_df %>%
