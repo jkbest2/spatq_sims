@@ -23,78 +23,78 @@ Rscript 31_fit_qdevscaling_parallel.R  22  22
 Rscript 31_fit_qdevscaling_parallel.R  23  23
 Rscript 31_fit_qdevscaling_parallel.R  24  24
 Rscript 31_fit_qdevscaling_parallel.R  25  25
-# Rscript 31_fit_qdevscaling_parallel.R  26  26
-# Rscript 31_fit_qdevscaling_parallel.R  27  27
-# Rscript 31_fit_qdevscaling_parallel.R  28  28
-# Rscript 31_fit_qdevscaling_parallel.R  29  29
-# Rscript 31_fit_qdevscaling_parallel.R  30  30
-# Rscript 31_fit_qdevscaling_parallel.R  31  31
-# Rscript 31_fit_qdevscaling_parallel.R  32  32
-# Rscript 31_fit_qdevscaling_parallel.R  33  33
-# Rscript 31_fit_qdevscaling_parallel.R  34  34
-# Rscript 31_fit_qdevscaling_parallel.R  35  35
-# Rscript 31_fit_qdevscaling_parallel.R  36  36
-# Rscript 31_fit_qdevscaling_parallel.R  37  37
-# Rscript 31_fit_qdevscaling_parallel.R  38  38
-# Rscript 31_fit_qdevscaling_parallel.R  39  39
-# Rscript 31_fit_qdevscaling_parallel.R  40  40
-# Rscript 31_fit_qdevscaling_parallel.R  41  41
-# Rscript 31_fit_qdevscaling_parallel.R  42  42
-# Rscript 31_fit_qdevscaling_parallel.R  43  43
-# Rscript 31_fit_qdevscaling_parallel.R  44  44
-# Rscript 31_fit_qdevscaling_parallel.R  45  45
-# Rscript 31_fit_qdevscaling_parallel.R  46  46
-# Rscript 31_fit_qdevscaling_parallel.R  47  47
-# Rscript 31_fit_qdevscaling_parallel.R  48  48
-# Rscript 31_fit_qdevscaling_parallel.R  49  49
-# Rscript 31_fit_qdevscaling_parallel.R  50  50
-# Rscript 31_fit_qdevscaling_parallel.R  51  51
-# Rscript 31_fit_qdevscaling_parallel.R  52  52
-# Rscript 31_fit_qdevscaling_parallel.R  53  53
-# Rscript 31_fit_qdevscaling_parallel.R  54  54
-# Rscript 31_fit_qdevscaling_parallel.R  55  55
-# Rscript 31_fit_qdevscaling_parallel.R  56  56
-# Rscript 31_fit_qdevscaling_parallel.R  57  57
-# Rscript 31_fit_qdevscaling_parallel.R  58  58
-# Rscript 31_fit_qdevscaling_parallel.R  59  59
-# Rscript 31_fit_qdevscaling_parallel.R  60  60
-# Rscript 31_fit_qdevscaling_parallel.R  61  61
-# Rscript 31_fit_qdevscaling_parallel.R  62  62
-# Rscript 31_fit_qdevscaling_parallel.R  63  63
-# Rscript 31_fit_qdevscaling_parallel.R  64  64
-# Rscript 31_fit_qdevscaling_parallel.R  65  65
-# Rscript 31_fit_qdevscaling_parallel.R  66  66
-# Rscript 31_fit_qdevscaling_parallel.R  67  67
-# Rscript 31_fit_qdevscaling_parallel.R  68  68
-# Rscript 31_fit_qdevscaling_parallel.R  69  69
-# Rscript 31_fit_qdevscaling_parallel.R  70  70
-# Rscript 31_fit_qdevscaling_parallel.R  71  71
-# Rscript 31_fit_qdevscaling_parallel.R  72  72
-# Rscript 31_fit_qdevscaling_parallel.R  73  73
-# Rscript 31_fit_qdevscaling_parallel.R  74  74
-# Rscript 31_fit_qdevscaling_parallel.R  75  75
-# Rscript 31_fit_qdevscaling_parallel.R  76  76
-# Rscript 31_fit_qdevscaling_parallel.R  77  77
-# Rscript 31_fit_qdevscaling_parallel.R  78  78
-# Rscript 31_fit_qdevscaling_parallel.R  79  79
-# Rscript 31_fit_qdevscaling_parallel.R  80  80
-# Rscript 31_fit_qdevscaling_parallel.R  81  81
-# Rscript 31_fit_qdevscaling_parallel.R  82  82
-# Rscript 31_fit_qdevscaling_parallel.R  83  83
-# Rscript 31_fit_qdevscaling_parallel.R  84  84
-# Rscript 31_fit_qdevscaling_parallel.R  85  85
-# Rscript 31_fit_qdevscaling_parallel.R  86  86
-# Rscript 31_fit_qdevscaling_parallel.R  87  87
-# Rscript 31_fit_qdevscaling_parallel.R  88  88
-# Rscript 31_fit_qdevscaling_parallel.R  89  89
-# Rscript 31_fit_qdevscaling_parallel.R  90  90
-# Rscript 31_fit_qdevscaling_parallel.R  91  91
-# Rscript 31_fit_qdevscaling_parallel.R  92  92
-# Rscript 31_fit_qdevscaling_parallel.R  93  93
-# Rscript 31_fit_qdevscaling_parallel.R  94  94
-# Rscript 31_fit_qdevscaling_parallel.R  95  95
-# Rscript 31_fit_qdevscaling_parallel.R  96  96
-# Rscript 31_fit_qdevscaling_parallel.R  97  97
-# Rscript 31_fit_qdevscaling_parallel.R  98  98
-# Rscript 31_fit_qdevscaling_parallel.R  99  99
-# Rscript 31_fit_qdevscaling_parallel.R 100 100
+Rscript 31_fit_qdevscaling_parallel.R  26  26
+Rscript 31_fit_qdevscaling_parallel.R  27  27
+Rscript 31_fit_qdevscaling_parallel.R  28  28
+Rscript 31_fit_qdevscaling_parallel.R  29  29
+Rscript 31_fit_qdevscaling_parallel.R  30  30
+Rscript 31_fit_qdevscaling_parallel.R  31  31
+Rscript 31_fit_qdevscaling_parallel.R  32  32
+Rscript 31_fit_qdevscaling_parallel.R  33  33
+Rscript 31_fit_qdevscaling_parallel.R  34  34
+Rscript 31_fit_qdevscaling_parallel.R  35  35
+Rscript 31_fit_qdevscaling_parallel.R  36  36
+Rscript 31_fit_qdevscaling_parallel.R  37  37
+Rscript 31_fit_qdevscaling_parallel.R  38  38
+Rscript 31_fit_qdevscaling_parallel.R  39  39
+Rscript 31_fit_qdevscaling_parallel.R  40  40
+Rscript 31_fit_qdevscaling_parallel.R  41  41
+Rscript 31_fit_qdevscaling_parallel.R  42  42
+Rscript 31_fit_qdevscaling_parallel.R  43  43
+Rscript 31_fit_qdevscaling_parallel.R  44  44
+Rscript 31_fit_qdevscaling_parallel.R  45  45
+Rscript 31_fit_qdevscaling_parallel.R  46  46
+Rscript 31_fit_qdevscaling_parallel.R  47  47
+Rscript 31_fit_qdevscaling_parallel.R  48  48
+Rscript 31_fit_qdevscaling_parallel.R  49  49
+Rscript 31_fit_qdevscaling_parallel.R  50  50
+Rscript 31_fit_qdevscaling_parallel.R  51  51
+Rscript 31_fit_qdevscaling_parallel.R  52  52
+Rscript 31_fit_qdevscaling_parallel.R  53  53
+Rscript 31_fit_qdevscaling_parallel.R  54  54
+Rscript 31_fit_qdevscaling_parallel.R  55  55
+Rscript 31_fit_qdevscaling_parallel.R  56  56
+Rscript 31_fit_qdevscaling_parallel.R  57  57
+Rscript 31_fit_qdevscaling_parallel.R  58  58
+Rscript 31_fit_qdevscaling_parallel.R  59  59
+Rscript 31_fit_qdevscaling_parallel.R  60  60
+Rscript 31_fit_qdevscaling_parallel.R  61  61
+Rscript 31_fit_qdevscaling_parallel.R  62  62
+Rscript 31_fit_qdevscaling_parallel.R  63  63
+Rscript 31_fit_qdevscaling_parallel.R  64  64
+Rscript 31_fit_qdevscaling_parallel.R  65  65
+Rscript 31_fit_qdevscaling_parallel.R  66  66
+Rscript 31_fit_qdevscaling_parallel.R  67  67
+Rscript 31_fit_qdevscaling_parallel.R  68  68
+Rscript 31_fit_qdevscaling_parallel.R  69  69
+Rscript 31_fit_qdevscaling_parallel.R  70  70
+Rscript 31_fit_qdevscaling_parallel.R  71  71
+Rscript 31_fit_qdevscaling_parallel.R  72  72
+Rscript 31_fit_qdevscaling_parallel.R  73  73
+Rscript 31_fit_qdevscaling_parallel.R  74  74
+Rscript 31_fit_qdevscaling_parallel.R  75  75
+Rscript 31_fit_qdevscaling_parallel.R  76  76
+Rscript 31_fit_qdevscaling_parallel.R  77  77
+Rscript 31_fit_qdevscaling_parallel.R  78  78
+Rscript 31_fit_qdevscaling_parallel.R  79  79
+Rscript 31_fit_qdevscaling_parallel.R  80  80
+Rscript 31_fit_qdevscaling_parallel.R  81  81
+Rscript 31_fit_qdevscaling_parallel.R  82  82
+Rscript 31_fit_qdevscaling_parallel.R  83  83
+Rscript 31_fit_qdevscaling_parallel.R  84  84
+Rscript 31_fit_qdevscaling_parallel.R  85  85
+Rscript 31_fit_qdevscaling_parallel.R  86  86
+Rscript 31_fit_qdevscaling_parallel.R  87  87
+Rscript 31_fit_qdevscaling_parallel.R  88  88
+Rscript 31_fit_qdevscaling_parallel.R  89  89
+Rscript 31_fit_qdevscaling_parallel.R  90  90
+Rscript 31_fit_qdevscaling_parallel.R  91  91
+Rscript 31_fit_qdevscaling_parallel.R  92  92
+Rscript 31_fit_qdevscaling_parallel.R  93  93
+Rscript 31_fit_qdevscaling_parallel.R  94  94
+Rscript 31_fit_qdevscaling_parallel.R  95  95
+Rscript 31_fit_qdevscaling_parallel.R  96  96
+Rscript 31_fit_qdevscaling_parallel.R  97  97
+Rscript 31_fit_qdevscaling_parallel.R  98  98
+Rscript 31_fit_qdevscaling_parallel.R  99  99
+Rscript 31_fit_qdevscaling_parallel.R 100 100
