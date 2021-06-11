@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=fit_prefintensity
+#SBATCH --job-name=fit_densdepq
 
 ## Allocations definition
 #SBATCH --account=stf-ckpt
