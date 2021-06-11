@@ -5,10 +5,8 @@
 ## replicate numbers from the command line arguments.
 if (interactive()) {
   devtools::load_all("~/dev/spatq", helpers = FALSE)
-  repl_arg <- c(1, 25)
 } else {
   library(spatq)
-  repl_arg <- as.numeric(commandArgs(trailingOnly = TRUE))
 }
 library(tidyverse)
 
@@ -18,7 +16,7 @@ studies <- c("qdevscaling",
              "prefintensity",
              "densdepq")
 ## What range of replicates are going to be fit?
-repls <- factor(repl_arg[1]:repl_arg[2])
+repls <- factor(1:100)
 ## How many years to fit?
 max_T <- 15
 ## Names of the operating models
@@ -132,6 +130,17 @@ plot_bias <- function(index_df) {
     guides(color = FALSE)
 }
 
+index_filetype <- function(paths) {
+  if (file.exists(paths$index_feather)) {
+    ft <- "feather"
+  } else if (file.exists(paths$index_csv)) {
+    ft <- "csv"
+  } else {
+    ft <- NA
+  }
+  ft
+}
+
 eval_dir <- "evaluation"
 pdonly <- TRUE
 
@@ -141,12 +150,17 @@ for (study in studies) {
                            opmod = opmods,
                            estmod = estmods)) %>%
     rowwise() %>%
-    mutate(spec = list(spatq_simstudyspec(study, repl = repl, opmod = opmod, estmod = estmod)))
+    mutate(spec = list(spatq_simstudyspec(study, repl = repl, opmod = opmod, estmod = estmod)),
+           paths = list(res_file_paths(study, repl, opmod, estmod, root_dir)),
+           index_ft = index_filetype(paths),
+           has_rdata = file.exists(paths$rdata))
 
-  index_df <- map_df(spec_df$spec, read_index)
+  index_df <- map2_df(spec_df$spec, spec_df$filetype, read_index, estmods = estmods)
   res_df <- spec_df %>%
+    filter(!is.na(filetype)) %>%
     mutate(rdata = list(read_rdata(spec)))
   res_df <- spec_df %>%
+    filter(has_rdata) %>%
     mutate(res = list(read_rdata(spec)),
            pdhess = posdefhess(res))
 
