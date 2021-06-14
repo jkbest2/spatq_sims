@@ -157,7 +157,7 @@ for (study in studies) {
            has_rdata = file.exists(paths$rdata)) %>%
     filter(!is.na(index_ft))
 
-  index_df <- map2_df(spec_df$spec, spec_df$filetype, read_index, estmods = estmods)
+  index_df <- map2_df(spec_df$spec, spec_df$index_ft, read_index, estmods = estmods)
 
   res_df <- spec_df %>%
     filter(has_rdata) %>%
