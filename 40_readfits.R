@@ -10,6 +10,7 @@ if (interactive()) {
 }
 library(tidyverse)
 
+root_dir <- "."
 ## Which simulation study are we fitting?
 studies <- c("qdevscaling",
              "sharedq",
