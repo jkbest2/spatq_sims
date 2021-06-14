@@ -154,12 +154,11 @@ for (study in studies) {
     mutate(spec = list(spatq_simstudyspec(study, repl = repl, opmod = opmod, estmod = estmod)),
            paths = list(res_file_paths(study, repl, opmod, estmod, root_dir)),
            index_ft = index_filetype(paths),
-           has_rdata = file.exists(paths$rdata))
+           has_rdata = file.exists(paths$rdata)) %>%
+    filter(!is.na(index_ft))
 
   index_df <- map2_df(spec_df$spec, spec_df$filetype, read_index, estmods = estmods)
-  res_df <- spec_df %>%
-    filter(!is.na(filetype)) %>%
-    mutate(rdata = list(read_rdata(spec)))
+
   res_df <- spec_df %>%
     filter(has_rdata) %>%
     mutate(res = list(read_rdata(spec)),
