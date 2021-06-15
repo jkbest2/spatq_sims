@@ -43,7 +43,7 @@ get_om_parval <- function(study, opmod = 1:6) {
                       qdevscaling = 10 ^ seq(-3, -0.5, 0.5),
                       sharedq = seq(0, 1, 0.2),
                       prefintensity = c(0, 1, 2, 4, 8, 16),
-                      densedepq = seq(0, 1.25, 0.25))
+                      densdepq = seq(0, 1.25, 0.25))
   studyvals[opmod]
 }
 
