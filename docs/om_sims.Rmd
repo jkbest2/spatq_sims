@@ -56,7 +56,8 @@ This was part of the simulation study addressing the effect of the `r switch(par
 pop_df <- read_popstate(params$study,
                         params$repl,
                         params$opmod,
-                        params$root_dir) %>%
+                        params$root_dir,
+                        filetype = "feather") %>%
   filter(year <= params$max_T)
 
 pop_df %>%
@@ -160,9 +161,11 @@ rbind(comm_index, surv_index, combo_index, true_index) %>%
 # Abundance
 
 ```{r}
-pop_file <- h5file(om_files$poph5, mode = "r")
-pop_array <- pop_file[["popstate"]]$read()
-pop_file$close()
+pop_array <- read_popstate(study = params$study,
+                           repl = params$repl,
+                           opmod = params$opmod,
+                           root_dir = params$root_dir,
+                           filetype = "h5")[, , 1:params$max_T]
 ```
 
 ```{r}
