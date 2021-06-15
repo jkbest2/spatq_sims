@@ -242,9 +242,10 @@ trips.
 ```{r}
 pref_df <- spatpop_df %>%
   group_by(year) %>%
-  mutate(tot_pop = sum(pop),
-         target_prob = pop / tot_pop,
-         expect_eff = target_prob * 2000)
+  mutate(target_wt = pop ^ pars$pref_power,
+         tot_wt = sum(target_wt),
+         target_prob = target_wt / tot_wt,
+         expect_eff = target_prob * 40000)
   
 pref_df %>%
   ggplot(aes(x = s1, y = s2, fill = expect_eff)) +
