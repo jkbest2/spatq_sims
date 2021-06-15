@@ -57,10 +57,10 @@ pop_df <- read_popstate(params$study,
                         params$repl,
                         params$opmod,
                         params$root_dir) %>%
-  filter(time <= params$max_T)
+  filter(year <= params$max_T)
 
 pop_df %>%
-  ggplot(aes(x = time, y = pop)) +
+  ggplot(aes(x = year, y = pop)) +
   geom_line() +
   scale_x_continuous(breaks = seq(5, 15, 5),
                      minor_breaks = 1:15,
@@ -79,16 +79,16 @@ catch_df <- read_catch(params$study,
                        params$repl,
                        params$opmod,
                        params$root_dir) %>%
-  filter(time <= params$max_T) %>%
+  filter(year <= params$max_T) %>%
   mutate(vessel_idx = factor(vessel_idx,
                              labels = c("Survey", "Commercial")))
 ```
 
 ```{r}
 catch_df %>%
-  group_by(time, vessel_idx) %>%
+  group_by(year, vessel_idx) %>%
   summarize(catch_biomass = sum(catch_biomass)) %>%
-  ggplot(aes(x = time, y = catch_biomass, color = vessel_idx)) +
+  ggplot(aes(x = year, y = catch_biomass, color = vessel_idx)) +
   geom_line() +
   facet_grid(vessel_idx ~ ., scales = "free_y") +
   scale_x_continuous(breaks = seq(5, 15, 5),
@@ -109,7 +109,7 @@ These are simply the mean catches within each year, normalized to have a geometr
 ```{r}
 comm_index <- catch_df %>%
   filter(vessel_idx == "Commercial") %>%
-  group_by(time) %>%
+  group_by(year) %>%
   summarize(tot_catch = sum(catch_biomass)) %>%
   mutate(vessel_idx = "Commercial",
          index = rescale_index(tot_catch)$index) %>%
@@ -117,14 +117,14 @@ comm_index <- catch_df %>%
 
 surv_index <- catch_df %>%
   filter(vessel_idx == "Survey") %>%
-  group_by(time) %>%
+  group_by(year) %>%
   summarize(tot_catch = sum(catch_biomass)) %>%
   mutate(vessel_idx = "Survey",
          index = rescale_index(tot_catch)$index) %>%
   select(-tot_catch)
 
 combo_index <- catch_df %>%
-  group_by(time) %>%
+  group_by(year) %>%
   summarize(tot_catch = sum(catch_biomass)) %>%
   mutate(vessel_idx = "Combo",
          index = rescale_index(tot_catch)$index) %>%
@@ -141,9 +141,9 @@ rbind(comm_index, surv_index, combo_index, true_index) %>%
                                   "Commercial",
                                   "Combo",
                                   "True")) %>%
-  ggplot(aes(x = time, y = index, color = vessel_idx)) +
+  ggplot(aes(x = year, y = index, color = vessel_idx)) +
   geom_line() +
-  ## geom_line(aes(x = time, y = index), data = true_index, color = "black", inherit.aes = FALSE) +
+  ## geom_line(aes(x = year, y = index), data = true_index, color = "black", inherit.aes = FALSE) +
   scale_x_continuous(breaks = seq(5, 15, 5),
                      minor_breaks = 1:15,
                      expand = expansion(0.05, 0)) +
@@ -168,7 +168,7 @@ pop_file$close()
 ```{r}
 spatpop_df <- cross_df(list(s1 = seq(0.5, 99.5),
                             s2 = seq(0.5, 99.5),
-                            time = 1:params$max_T)) %>%
+                            year = 1:params$max_T)) %>%
   mutate(pop = as.vector(pop_array[, , seq_len(params$max_T)]))
 ```
 
@@ -176,7 +176,7 @@ spatpop_df <- cross_df(list(s1 = seq(0.5, 99.5),
 pop_plot <- ggplot(spatpop_df, aes(x = s1, y = s2, fill = pop)) +
   geom_raster() +
   scale_fill_viridis_c(guide = FALSE) +
-  facet_wrap(~ time, nrow = 3) +
+  facet_wrap(~ year, nrow = 3) +
   coord_equal(xlim = c(0, 100),
               ylim = c(0, 100)) +
   om_theme()
@@ -189,7 +189,7 @@ pop_plot
 
 ```{r}
 survey_catch_plot <- catch_df %>%
-  group_by(time, s1, s2) %>%
+  group_by(year, s1, s2) %>%
   filter(vessel_idx == "Survey") %>%
   summarize(tot_catch = sum(catch_biomass)) %>%
   ggplot(aes(x = s1, y = s2, color = tot_catch, size = tot_catch)) +
@@ -198,7 +198,7 @@ survey_catch_plot <- catch_df %>%
   scale_color_viridis_c(option = "B") +
   guides(color = FALSE,
          size = FALSE) +
-  facet_wrap(~ time, nrow = 3) +
+  facet_wrap(~ year, nrow = 3) +
   coord_equal(xlim = c(0, 100), ylim = c(0, 100)) +
   om_theme()
 survey_catch_plot
@@ -213,7 +213,7 @@ comm_df <- catch_df %>%
   filter(vessel_idx == "Commercial") %>%
   mutate(g1 = cut(s1, brks, labels = FALSE),
          g2 = cut(s2, brks, labels = FALSE)) %>%
-  group_by(time, g1, g2) %>%
+  group_by(year, g1, g2) %>%
   summarize(tot_catch = sum(catch_biomass),
             tot_effort = sum(effort)) %>%
   mutate(s1 = cntrs[g1],
@@ -223,7 +223,7 @@ comm_catch_plot <- ggplot(comm_df, aes(x = s1, y = s2, fill = tot_catch)) +
   geom_tile(width = sz, height = sz) +
   scale_fill_viridis_c(option = "B",
                        guide = FALSE) +
-  facet_wrap(~ time, nrow = 3) +
+  facet_wrap(~ year, nrow = 3) +
   coord_equal(xlim = c(0, 100), ylim = c(0, 100)) +
   om_theme()
 comm_catch_plot
@@ -238,7 +238,7 @@ trips.
 
 ```{r}
 pref_df <- spatpop_df %>%
-  group_by(time) %>%
+  group_by(year) %>%
   mutate(tot_pop = sum(pop),
          target_prob = pop / tot_pop,
          expect_eff = target_prob * 2000)
@@ -249,7 +249,7 @@ pref_df %>%
   scale_fill_binned() +
   coord_equal(xlim = c(0, 100),
               ylim = c(0, 100)) +
-  facet_wrap(~ time, nrow = 3) +
+  facet_wrap(~ year, nrow = 3) +
   om_theme() +
   theme(legend.title = element_blank())
 ```
@@ -260,7 +260,7 @@ pref_df %>%
 ggplot(comm_df, aes(x = s1, y = s2, fill = tot_effort)) +
   geom_tile(width = sz, height = sz) +
   scale_fill_viridis_b(option = "E") +
-  facet_wrap(~ time, nrow = 3) +
+  facet_wrap(~ year, nrow = 3) +
   coord_equal(xlim = c(0, 100), ylim = c(0, 100)) +
   om_theme()
 ```
@@ -273,7 +273,7 @@ prepf <- h5file(file.path(params$root_dir, "prep.h5"), "r")
 logq_devs <- prepf[["log_catchability_devs"]]$read()[, , params$repl]
 prepf$close()
 logq_df <- spatpop_df %>%
-  filter(time == 1) %>%
+  filter(year == 1) %>%
   mutate(logq_dev = as.vector(logq_devs),
          comm_q = comm_catchability(logq_dev, pars),
          surv_q = survey_catchability(logq_dev, pars),

@@ -5,9 +5,11 @@ if (!dir.exists("om_sims"))
 
 param_list <- cross(list(study = c("qdevscaling",
                                    "sharedq",
-                                   "prefintensity"),
+                                   "prefintensity",
+                                   "densdepq"),
                          repl = 1:5,
                          opmod = 1:6,
+                         max_T = 15,
                          root_dir = "~/gscratch/spatq_sims"))
 
 render_om <- function(pars) {
