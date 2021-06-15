@@ -250,7 +250,6 @@ pref_df <- spatpop_df %>%
 pref_df %>%
   ggplot(aes(x = s1, y = s2, fill = expect_eff)) +
   geom_raster() +
-  scale_fill_binned() +
   coord_equal(xlim = c(0, 100),
               ylim = c(0, 100)) +
   facet_wrap(~ year, nrow = 3) +
