@@ -68,9 +68,9 @@ for (i in 1:nrow(spec_df)) {
   spec <- spatq_simstudyspec(as.list(spec_df[i, ]))
 
   ## Make sure that results directory exists
-  rd <- file.path(study_dir(spec$study, root_dir),
+  rd <- file.path(spatq:::study_dir(spec$study, root_dir),
                   "results",
-                  repl_dir(spec$repl))
+                  spatq:::repl_dir(spec$repl))
   if (!dir.exists(rd)) dir.create(rd)
 
   if (spec$estmod == "design") {
