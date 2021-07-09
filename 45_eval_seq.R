@@ -39,19 +39,27 @@ bias_df <- index_df %>%
 bias_wide <- bias_df %>%
   pivot_wider(names_from = opmod, values_from = delta)
 
+if (!dir.exists("eval_prefseq")) dir.create("eval_prefseq")
+
 ggplot(bias_df, aes(x = as.numeric(opmod), y = delta, color = estmod)) +
   geom_point() +
   geom_line() +
   geom_hline(yintercept = 1, linetype = "dashed")
+ggsave("eval_prefseq/bias.svg")
+ggsave("eval_prefseq/bias.png")
 
 ggplot(index_df, aes(x = index_true, y = index_unb)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
   geom_point() +
   facet_grid(opmod ~ estmod) +
   geom_smooth(method = lm)
+ggsave("eval_prefseq/index_index.svg")
+ggsave("eval_prefseq/index_index.png")
 
 ggplot(index_df, aes(x = log(raw_true), y = log(raw_est))) +
   geom_abline(slope = 1, intercept = seq(-20, 0, 2), alpha = 0.4, linetype = "dashed") +
   geom_point() +
   geom_smooth(method = lm) +
   facet_grid(opmod ~ estmod, scales = "free")
+ggsave("eval_prefseq/delta.svg")
+ggsave("eval_prefseq/delta.png")
