@@ -84,7 +84,6 @@ for (i in 1:nrow(spec_df)) {
 
     ## Calculate and save design estimator
     dest <- design_estimator(catch_df, max_T)
-    if (!dir.exists())
     save_index(spec, dest, max_T)
   } else {
     estd <- estd_mod(spec$estmod)
