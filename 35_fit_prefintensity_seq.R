@@ -39,12 +39,6 @@ estd_mod <- function(em) {
                                     obs_lik = 1L))
 }
 
-
-spec_df <- cross_df(list(study = study,
-                         repl = repls,
-                         opmod = opmods,
-                         estmod = estmods))
-
 design_estimator <- function(catch_df, max_T = 15) {
   mat <- matrix(catch_df$catch_biomass, ncol = max_T)
   index <- colMeans(mat)
@@ -57,8 +51,28 @@ design_estimator <- function(catch_df, max_T = 15) {
                        sd = sd))
 }
 
+has_index <- function(spec) {
+  file.exists(res_file_paths(spec$study,
+                             spec$repl,
+                             spec$opmod,
+                             spec$estmod,
+                             spec$root_dir)$index_feather)
+}
+
+spec_df <- cross_df(list(study = study,
+                         repl = repls,
+                         opmod = opmods,
+                         estmod = estmods))
+
 for (i in 1:nrow(spec_df)) {
   spec <- spatq_simstudyspec(as.list(spec_df[i, ]))
+
+  ## Make sure that results directory exists
+  rd <- file.path(study_dir(spec$study, root_dir),
+                  "results",
+                  repl_dir(spec$repl))
+  if (!dir.exists(rd)) dir.create(rd)
+
   if (spec$estmod == "design") {
     catch_df <- read_catch(spec$study,
                            repl = spec$repl,
@@ -70,9 +84,8 @@ for (i in 1:nrow(spec_df)) {
 
     ## Calculate and save design estimator
     dest <- design_estimator(catch_df, max_T)
-    spec0 <- spec
-    spec0$estmod <- "design"
-    save_index(spec0, dest, max_T)
+    if (!dir.exists())
+    save_index(spec, dest, max_T)
   } else {
     estd <- estd_mod(spec$estmod)
     setup <- spatq_simsetup(study = spec$study,
