@@ -73,6 +73,14 @@ for (i in 1:nrow(spec_df)) {
                   spatq:::repl_dir(spec$repl))
   if (!dir.exists(rd)) dir.create(rd)
 
+  ## If index has already been fit, skip to next spec
+  rp <- res_file_paths(spec$study,
+                       spec$repl,
+                       spec$opmod,
+                       spec$estmod,
+                       spec$root_dir)
+  if (file.exists(rp$index_feather)) next
+
   if (spec$estmod == "design") {
     catch_df <- read_catch(spec$study,
                            repl = spec$repl,
