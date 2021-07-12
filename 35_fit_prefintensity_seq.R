@@ -11,6 +11,11 @@ if (interactive()) {
   repl_arg <- as.numeric(commandArgs(trailingOnly = TRUE))
 }
 library(tidyverse)
+library(foreach)
+library(doParallel)
+
+## Set up cluster
+cl <- makeForkCluster(4)
 
 ## Where are we working?
 root_dir <- "."
@@ -64,7 +69,9 @@ spec_df <- cross_df(list(study = study,
                          opmod = opmods,
                          estmod = estmods))
 
-for (i in 1:nrow(spec_df)) {
+foreach(i = 1:nrow(spec_df),
+       .combine = c,
+       .packages = c("spatq", "tidyverse"))  %dopar% {
   spec <- spatq_simstudyspec(as.list(spec_df[i, ]))
 
   ## Make sure that results directory exists
@@ -115,4 +122,7 @@ for (i in 1:nrow(spec_df)) {
     save_fit(spec, fit, lpb, rep, sdr)
     save_index(spec, sdr, max_T)
   }
+  TRUE
 }
+
+stopCluster(cl)
