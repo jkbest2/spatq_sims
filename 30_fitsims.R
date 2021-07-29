@@ -1,177 +1,88 @@
-library(spatq)
-## devtools::load_all("~/dev/spatq", helpers = FALSE)
+if (interactive()) {
+  devtools::load_all("~/dev/spatq", helpers = FALSE)
+  study <- "qdevscaling"
+  repls <- 1:5
+} else {
+  library(spatq)
+  args <- commandArgs(trailingOnly = TRUE)
+  study <- args[1]
+  repls <- args[2]:args[3]
+}
 library(tidyverse)
+library(parallel)
+library(foreach)
+library(doParallel)
+library(RhpcBLASctl)
 
-## What range of replicates are we looking for?
-repls <- as.numeric(commandArgs(trailingOnly = TRUE))
+## Get number of cores via SLURM if available
+ntotcores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+if (is.na(ntotcores))
+  ntotcores <- detectCores()
 
-## List all possible combinations of OM/EM in given replicate range
-specify_fits <- function(repl = repls[1]:repls[2],
-                         estmod = c("survey",
-                                    "spatial_ab",
-                                    "spatial_q"),
-                         opmod = c("combo",
-                                   "pref",
-                                   "spat"),
-                         root = "results") {
-  if (!file.exists(root)) dir.create(root)
+nparfits <- as.numeric(Sys.getenv("SPATQ_PAR_FITS"))
+if (is.na(nparfits))
+  nparfits <- 7L
 
-  df <- cross_df(list(estmod = estmod, opmod = opmod, repl = repl)) %>%
-    mutate(Rdata = get_rdata_filename(repl, estmod, opmod, root),
-           index = get_indexcsv_filename(repl, estmod, opmod, root),
-           sub_df = map(estmod, specify_subset),
-           estd = map(estmod, estmod_pars))
-  df
-}
+nblasthreads <- ntotcores %/% nparfits
 
-get_repl_str <- function(repl) {
-  str_pad(repl, 2, pad = 0)
-}
-get_rdata_filename <- function(repl, estmod, opmod, root = "results") {
-  repl_str <- get_repl_str(repl)
-  file.path(root, paste0(repl_str, "_", opmod, "_", estmod, ".Rdata"))
-}
+opmods <- 1:6
+estmods <- c("model",
+             "survey",
+             "survey_spt",
+             "spatial_ab",
+             "spatial_q")
+root_dir = "."
 
-get_indexcsv_filename <- function(repl, estmod, opmod, root = "results") {
-  repl_str <- get_repl_str(repl)
-  file.path(root, paste0(repl_str, "_", opmod, "_", estmod, "_index.csv"))
-}
+fitspec_ls <- cross(list(estmod = estmods,
+                         opmod = opmods,
+                         repl = repls,
+                         study = study,
+                         root_dir = root_dir))
 
-## Which still need to be fit?
-fits_todo <- function(fit_spec, result_root = "results") {
-  fit_spec %>%
-    filter(!file.exists(Rdata))
-}
+fit <- function(fit_spec) {
+  spec <- spatq_simstudyspec(fit_spec)
+  max_T <- 15
 
-## How many observations to use from each ?
-specify_subset <- function(estmod) {
-  sub_df <- switch(estmod,
-                   ## Don't use any fish-dep data for survey index
-                   survey = data.frame(vessel_idx = 2, n = 0),
-                   spatial_ab = NULL,
-                   spatial_q = NULL)
-  sub_df
-}
-
-## Specify which parameters to estimate for each estimation model; don't
-## estimate catchability parameters if using a single survey vessel.
-estmod_pars <- function(estmod) {
-  switch(estmod,
-         survey = specify_estimated(beta = TRUE,
-                                    gamma = FALSE,
-                                    omega = list(omega_n = TRUE,
-                                                 omega_w = FALSE),
-                                    epsilon = FALSE,
-                                    lambda = FALSE, # Survey-only
-                                    eta = FALSE,
-                                    phi = FALSE,
-                                    psi = FALSE,
-                                    kappa_map =
-                                      c(1, NA, NA, NA, NA, NA, NA, NA),
-                                    obs_lik = 1L),
-         spatial_ab = specify_estimated(beta = TRUE,
-                                        gamma = FALSE,
-                                        omega = list(omega_n = TRUE,
-                                                     omega_w = FALSE),
-                                        epsilon = FALSE,
-                                        phi = FALSE,
-                                        psi = FALSE,
-                                        kappa_map =
-                                          c(1, NA, NA, NA, NA, NA, NA, NA),
-                                        obs_lik = 1L),
-         spatial_q = specify_estimated(beta = TRUE,
-                                       gamma = FALSE,
-                                       omega = list(omega_n = TRUE, omega_w = FALSE),
-                                       epsilon = FALSE,
-                                       lambda = TRUE,
-                                       eta = FALSE,
-                                       phi = list(phi_n = TRUE, phi_w = FALSE),
-                                       psi = FALSE,
-                                       kappa_map =
-                                         c(1, NA, NA, NA, 2, NA, NA, NA),
-                                       obs_lik = 1L))
-}
-
-main <- function(max_T = 15,
-                 optcontrol = list(eval.max = 1000L, iter.max = 750L)) {
-  fit_list <- fits_todo(specify_fits())
-
-  for (idx in seq_len(nrow(fit_list))) {
-    spec <- fit_list[idx, ]
-
-    setup <- spatq_simsetup(repl = spec$repl,
-                            spec$opmod,
-                            spec$sub_df[[1]],
+  ## Suppress warnings about NaNs during fitting
+  suppressWarnings({
+    setup <- spatq_simsetup(study = spec$study,
+                            repl = spec$repl,
+                            opmod = spec$opmod,
+                            estmod = spec$estmod,
                             max_T = max_T,
-                            index_step = 1,
-                            spec_estd = spec$estd[[1]])
-    obj <- spatq_obj(setup,
-                     runSymbolicAnalysis = TRUE,
-                     normalize = TRUE,
-                     silent = TRUE)
+                            index_step = 1)
+    obj <- spatq_obj(setup)
+    fit <- spatq_fit(obj)
+    fit <- spatq_fit(obj, fit = fit, method = "BFGS")
+    fit <- spatq_fit(obj, fit = fit)
+    sdr <- sdreport_spatq(obj)
+    rep <- report_spatq(obj)
+    lpb <- gather_nvec(obj$env$last.par.best)
+  })
 
-    fit <- tryCatch({
-      ## Fit with large number of iterations and do it twice so more likely to
-      ## reach optimum. Previous fits have ended early and/or with large
-      ## gradient components, and many of these did not have PD Hessians
-      fit <- spatq_fit(obj = obj, control = optcontrol)
-      fit <- spatq_fit(obj = obj, fit = fit, control = optcontrol)
-      fit},
-      error = function(e) list(fail = TRUE))
-    lpb <- tryCatch(
-      gather_nvec(obj$env$last.par.best),
-      error = function(e) list(fail = TRUE))
-    rep <- tryCatch(
-      report_spatq(obj),
-      error = function(e) list(fail = TRUE))
-    sdr <- tryCatch(
-      sdreport_spatq(obj),
-      error = function(e) list(fail = TRUE))
-
-    saveRDS(list(spec = spec, fit = fit, lpb = lpb, rep = rep, sdr = sdr),
-            spec$Rdata)
-
-    ## Read true population state and calculate index
-    true_index <- read_popstate(spec$repl, spec$opmod) %>%
-      rename(year = time,
-             raw_true = pop) %>%
-      filter(year <= max_T) %>%
-      mutate(index_true = rescale_index(raw_true)$index)
-
-    if (!("fail" %in% names(sdr))) {
-      ## Organize details for estimated index
-      which_index <- which(names(sdr$value) == "Index")
-      est_index <- tibble(repl = spec$repl,
-                          opmod = spec$opmod,
-                          estmod = spec$estmod,
-                          year = 1:max_T,
-                          raw_est = sdr$value[which_index],
-                          index_est = rescale_index(raw_est)$index,
-                          raw_unb = sdr$unbiased$value[which_index],
-                          index_unb = rescale_index(raw_unb)$index,
-                          raw_sd = sdr$sd[which_index],
-                          index_sd = rescale_index(raw_est, sd_raw)$sd,
-                          raw_unb_sd = sdr$unbiased$sd,
-                          unb_sd = rescale_index(raw_unb, raw_unb_sd)$sd)
-    } else {
-      est_index <- tibble(repl = spec$repl,
-                          opmod = spec$opmod,
-                          estmod = spec$estmod,
-                          year = 1:max_T,
-                          raw_est = rep(NA, max_T),
-                          index_est = rep(NA, max_T),
-                          raw_unb = rep(NA, max_T),
-                          index_unb = rep(NA, max_T),
-                          raw_sd = rep(NA, max_T),
-                          index_sd = rep(NA, max_T),
-                          raw_unb_sd = rep(NA, max_T),
-                          unb_sd = rep(NA, max_T))
-
-    }
-    ## Join and write to CSV file
-    index_df <- left_join(est_index, true_index, by = "year")
-    write_csv(index_df, spec$index)
-  }
+  save_fit(spec, fit, lpb, rep, sdr, root_dir = spec$root_dir)
+  save_index(spec, sdr, max_T, feather = TRUE)
+  ## Running this function for the side effects, just return a boolean
+  TRUE
 }
 
-main()
+need_fit <- function(fitspec) {
+  spec <- spatq_simstudyspec
+  !file.exists(index_path(fitspec, "feather"))
+}
+
+create_res_dir(study = study,
+               repl = repls)
+
+blas_set_num_threads(nblasthreads)
+
+cl <- makeForkCluster(nparfits)
+registerDoParallel(cl)
+foreach(fitspec = fitspec_ls,
+        .combine = c,
+        .inorder = FALSE,
+        .packages = c("spatq")) %:%
+  foreach::when(need_fit(fitspec)) %dopar% {
+            fit(fitspec)
+        }
+stopCluster(cl)
