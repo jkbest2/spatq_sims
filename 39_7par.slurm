@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=fit_3par
+#SBATCH --job-name=fit_7par
 
 ## Allocations definition
 #SBATCH --account=stf
