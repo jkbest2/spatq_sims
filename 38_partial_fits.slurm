@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=fit_sims
+#SBATCH --job-name=fit_partials
 
 ## Allocations definition
 #SBATCH --account=stf
@@ -17,7 +17,7 @@
 #SBATCH --cpus-per-task=28
 
 ## Walltime
-#SBATCH --time=12:00:00
+#SBATCH --time=6:00:00
 
 ## Memory per node
 #SBATCH --mem=120G
@@ -30,4 +30,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-Rscript 30_fitsims_foreach.R 1 25
+Rscript 38_partial_fits.R

@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=fit_sims
+#SBATCH --job-name=fit_prefintensity_sptemp
 
 ## Allocations definition
-#SBATCH --account=stf
-#SBATCH --partition=stf
+#SBATCH --account=stf-ckpt
+#SBATCH --partition=ckpt
 
 ## Nodes
 #SBATCH --nodes=1
@@ -14,13 +14,13 @@
 #SBATCH --tasks=1
 
 ## CPUs per task
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=28
 
 ## Walltime
-#SBATCH --time=16:00:00
+#SBATCH --time=24:00:00
 
 ## Memory per node
-#SBATCH --mem=40G
+#SBATCH --mem=120G
 
 ## Set the working directory for this job.
 ## Directory must exist before submitting job.
@@ -30,4 +30,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-Rscript 30_fitsims.R 20 25
+cat 36_fit_prefintensity_sptemp_jobs.sh  | parallel -j7
