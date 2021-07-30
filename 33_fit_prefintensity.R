@@ -38,8 +38,8 @@ specify_fits <- function(study, repls, opmods, estmods, root_dir = ".") {
   df <- cross_df(list(estmod = estmods, opmod = opmods, repl = repls)) %>%
     mutate(study = study,
            Rdata = res_paths$rdata,
-           sub_df = map(estmod, specify_subset),
-           estd = map(estmod, estmod_pars),
+           sub_df = map(estmod, em_subsample),
+           estd = map(estmod, em_estd),
            root_dir = root_dir)
   df
 }
@@ -51,55 +51,55 @@ fits_todo <- function(fit_spec, result_root = "prefintensity/results") {
 }
 
 ## How many observations to use from each ?
-specify_subset <- function(estmod) {
-  sub_df <- switch(estmod,
-                   ## Don't use any fish-dep data for survey index
-                   survey = data.frame(vessel_idx = 2, n = 0),
-                   spatial_ab = data.frame(vessel_idx = 2, n = 4000),
-                   spatial_q = data.frame(vessel_idx = 2, n = 4000))
-  sub_df
-}
+## specify_subset <- function(estmod) {
+##   sub_df <- switch(estmod,
+##                    ## Don't use any fish-dep data for survey index
+##                    survey = data.frame(vessel_idx = 2, n = 0),
+##                    spatial_ab = data.frame(vessel_idx = 2, n = 4000),
+##                    spatial_q = data.frame(vessel_idx = 2, n = 4000))
+##   sub_df
+## }
 
 ## Specify which parameters to estimate for each estimation model; don't
 ## estimate catchability parameters if using a single survey vessel.
-estmod_pars <- function(estmod) {
-  switch(estmod,
-         survey = specify_estimated(beta = TRUE,
-                                    gamma = FALSE,
-                                    omega = list(omega_n = TRUE,
-                                                 omega_w = FALSE),
-                                    epsilon = FALSE,
-                                    lambda = FALSE, # Survey-only
-                                    eta = FALSE,
-                                    phi = FALSE,
-                                    psi = FALSE,
-                                    kappa_map =
-                                      c(1, NA, NA, NA, NA, NA, NA, NA),
-                                    obs_lik = 1L),
-         spatial_ab = specify_estimated(beta = TRUE,
-                                        gamma = FALSE,
-                                        omega = list(omega_n = TRUE,
-                                                     omega_w = FALSE),
-                                        epsilon = FALSE,
-                                        phi = FALSE,
-                                        psi = FALSE,
-                                        kappa_map =
-                                          c(1, NA, NA, NA, NA, NA, NA, NA),
-                                        obs_lik = 1L),
-         spatial_q = specify_estimated(beta = TRUE,
-                                       gamma = FALSE,
-                                       omega = list(omega_n = TRUE,
-                                                    omega_w = FALSE),
-                                       epsilon = FALSE,
-                                       lambda = TRUE,
-                                       eta = FALSE,
-                                       phi = list(phi_n = TRUE,
-                                                  phi_w = FALSE),
-                                       psi = FALSE,
-                                       kappa_map =
-                                         c(1, NA, NA, NA, 1, NA, NA, NA),
-                                       obs_lik = 1L))
-}
+## estmod_pars <- function(estmod) {
+##   switch(estmod,
+##          survey = specify_estimated(beta = TRUE,
+##                                     gamma = FALSE,
+##                                     omega = list(omega_n = TRUE,
+##                                                  omega_w = FALSE),
+##                                     epsilon = FALSE,
+##                                     lambda = FALSE, # Survey-only
+##                                     eta = FALSE,
+##                                     phi = FALSE,
+##                                     psi = FALSE,
+##                                     kappa_map =
+##                                       c(1, NA, NA, NA, NA, NA, NA, NA),
+##                                     obs_lik = 1L),
+##          spatial_ab = specify_estimated(beta = TRUE,
+##                                         gamma = FALSE,
+##                                         omega = list(omega_n = TRUE,
+##                                                      omega_w = FALSE),
+##                                         epsilon = FALSE,
+##                                         phi = FALSE,
+##                                         psi = FALSE,
+##                                         kappa_map =
+##                                           c(1, NA, NA, NA, NA, NA, NA, NA),
+##                                         obs_lik = 1L),
+##          spatial_q = specify_estimated(beta = TRUE,
+##                                        gamma = FALSE,
+##                                        omega = list(omega_n = TRUE,
+##                                                     omega_w = FALSE),
+##                                        epsilon = FALSE,
+##                                        lambda = TRUE,
+##                                        eta = FALSE,
+##                                        phi = list(phi_n = TRUE,
+##                                                   phi_w = FALSE),
+##                                        psi = FALSE,
+##                                        kappa_map =
+##                                          c(1, NA, NA, NA, 1, NA, NA, NA),
+##                                        obs_lik = 1L))
+## }
 
 fit_list <- fits_todo(specify_fits(study = study,
                                    repls = repls,
