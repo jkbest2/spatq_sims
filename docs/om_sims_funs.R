@@ -34,14 +34,16 @@ om_descr <- function(study, repl, opmod) {
 }
 
 om_pars <- function(study, opmod) {
-  pars <- list(base_q = 0.2,
+  pars <- list(base_q = 0.01,
                logq_sd = 0.05,
                sharedq = 0,
-               pref_power = 1)
+               pref_power = 1,
+               densdepq_mult = 0)
 
-  qdevvals <- 10 ^ (-5:1)
+  qdevvals <- 10 ^ seq(-3, -0.5, 0.5)
   sharedqvals <- seq(0, 1, 0.2)
   prefintensvals <- c(0, 1, 2, 4, 8, 16)
+  densdepqvals <- seq(0, 1.25, 0.25)
 
   if (study == "qdevscaling") {
     pars$logq_sd <- qdevvals[opmod]
@@ -49,6 +51,9 @@ om_pars <- function(study, opmod) {
     pars$sharedq <- sharedqvals[opmod]
   } else if (study == "prefintensity") {
     pars$pref_power <- prefintensvals[opmod]
+  } else if (study == "densdepq") {
+    pars$logq_sd <- 0
+    pars$densdepq_mult <- densdepqvals[opmod]
   }
 
   pars
