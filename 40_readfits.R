@@ -22,13 +22,13 @@ repls <- factor(1:100)
 max_T <- 15
 ## Names of the operating models
 opmods <- factor(1:6)
-## Names of the estimation models
-estmods <- factor(c("survey",     # Survey-only
-                    "spatial_ab", # All data, spatial abundance
-                    "spatial_q"),  # All data, spatial abundance + catchability
-                  levels = c("survey",
-                             "spatial_ab",
-                             "spatial_q"))
+## Names of the estimation models; can't use a factor because it's not
+## recognized by om_* functions yet.
+estmods <- c("model",              # Non-spatial survey only
+             "survey",             # Survey-only
+             "survey_spt",         # Spatiotemporal survey
+             "spatial_ab",         # All data, spatial abundance
+             "spatial_q")          # All data, spatial abundance + catchability
 
 get_convcode <- function(fitlist) {
   pluck(fitlist, "fit", "convergence")
@@ -103,7 +103,7 @@ evaluate_calibration <- function(index_df) {
     geom_hline(yintercept = 1, linetype = "dashed") +
     facet_grid(opmod ~ estmod) +
     labs(x = "Quantile") +
-    guides(fill = FALSE) +
+    guides(fill = "none") +
     theme_minimal() +
     theme(axis.line.x = element_line(),
           axis.title.y = element_blank(),
@@ -118,7 +118,7 @@ plot_index_devs <- function(index_df) {
     geom_line(alpha = 0.6) +
     geom_hline(yintercept = 0, linetype = 2) +
     facet_grid(estmod ~ opmod) +
-    guides(color = FALSE)
+    guides(color = "none")
 }
 
 plot_bias <- function(index_df) {
@@ -128,19 +128,19 @@ plot_bias <- function(index_df) {
     geom_abline(slope = 1, intercept = 0, linetype = 2) +
     facet_grid(estmod ~ opmod) +
     coord_fixed() +
-    guides(color = FALSE)
+    guides(color = "none")
 }
 
-index_filetype <- function(paths) {
-  if (file.exists(paths$index_feather)) {
-    ft <- "feather"
-  } else if (file.exists(paths$index_csv)) {
-    ft <- "csv"
-  } else {
-    ft <- NA
-  }
-  ft
-}
+## index_filetype <- function(paths) {
+##   if (file.exists(paths$index_feather)) {
+##     ft <- "feather"
+##   } else if (file.exists(paths$index_csv)) {
+##     ft <- "csv"
+##   } else {
+##     ft <- NA
+##   }
+##   ft
+## }
 
 eval_dir <- "evaluation"
 pdonly <- TRUE
@@ -153,11 +153,10 @@ for (study in studies) {
     rowwise() %>%
     mutate(spec = list(spatq_simstudyspec(study, repl = repl, opmod = opmod, estmod = estmod)),
            paths = list(res_file_paths(study, repl, opmod, estmod, root_dir)),
-           index_ft = index_filetype(paths),
-           has_rdata = file.exists(paths$rdata)) %>%
+           has_rdata = file.exists(paths$rdata)) #%>%
     filter(!is.na(index_ft))
 
-  index_df <- map2_df(spec_df$spec, spec_df$index_ft, read_index)
+  index_df <- map_df(spec_df$spec, read_index, estmods = estmods)
 
   res_df <- spec_df %>%
     filter(has_rdata) %>%
