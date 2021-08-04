@@ -24,9 +24,9 @@ max_T <- 15
 opmods <- factor(1:6)
 ## Names of the estimation models; can't use a factor because it's not
 ## recognized by om_* functions yet.
-estmods <- c("model",              # Non-spatial survey only
+estmods <- c(## "model",              # Non-spatial survey only
              "survey",             # Survey-only
-             "survey_spt",         # Spatiotemporal survey
+             ## "survey_spt",         # Spatiotemporal survey
              "spatial_ab",         # All data, spatial abundance
              "spatial_q")          # All data, spatial abundance + catchability
 
@@ -62,16 +62,23 @@ evaluate_bias <- function(index_df) {
     mutate(mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true),
                                 data = .x)),
            coef = map(mod, coef),
-           delta = map_dbl(coef, pluck, "log(raw_true)")) %>%
-    select(opmod, estmod, delta) %>%
+           delta = map_dbl(coef, pluck, "log(raw_true)"),
+           sigma = map_dbl(mod, sigma),
+           ci = map(mod, confint, parm = "log(raw_true)"),
+           ci_lower = map_dbl(ci, pluck, 1),
+           ci_upper = map_dbl(ci, pluck, 2)) %>%
+    select(opmod, estmod, delta, sigma, ci_lower, ci_upper) %>%
     mutate(parval = map2_dbl(study, opmod, get_om_parval))
 }
 
 plot_bias2 <- function(index_df) {
   bias_df <- evaluate_bias(index_df)
-  ggplot(bias_df, aes(x = parval, y = delta, color = estmod)) +
+  ggplot(bias_df, aes(x = parval, y = delta,
+                      ymin = ci_lower, ymax = ci_upper,
+                      color = estmod)) +
     geom_line() +
     geom_point() +
+    geom_errorbar() +
     geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
     labs(x = get_om_parlabel(index_df$study[1]),
          y = "δ bias metric")
@@ -130,17 +137,6 @@ plot_bias <- function(index_df) {
     coord_fixed() +
     guides(color = "none")
 }
-
-## index_filetype <- function(paths) {
-##   if (file.exists(paths$index_feather)) {
-##     ft <- "feather"
-##   } else if (file.exists(paths$index_csv)) {
-##     ft <- "csv"
-##   } else {
-##     ft <- NA
-##   }
-##   ft
-## }
 
 eval_dir <- "evaluation"
 pdonly <- TRUE
