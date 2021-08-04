@@ -30,4 +30,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-Rscript 40_readfits.R 1 25
+Rscript 40_readfits.R 1 100

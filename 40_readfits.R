@@ -24,7 +24,7 @@ max_T <- 15
 opmods <- factor(1:6)
 ## Names of the estimation models; can't use a factor because it's not
 ## recognized by om_* functions yet.
-estmods <- c(## "model",              # Non-spatial survey only
+estmods <- c("model",              # Non-spatial survey only
              "survey",             # Survey-only
              ## "survey_spt",         # Spatiotemporal survey
              "spatial_ab",         # All data, spatial abundance
@@ -68,7 +68,8 @@ evaluate_bias <- function(index_df) {
            ci_lower = map_dbl(ci, pluck, 1),
            ci_upper = map_dbl(ci, pluck, 2)) %>%
     select(opmod, estmod, delta, sigma, ci_lower, ci_upper) %>%
-    mutate(parval = map2_dbl(study, opmod, get_om_parval))
+    mutate(parval = map2_dbl(study, opmod, get_om_parval),
+           estmod = factor(estmod, levels = estmods))
 }
 
 plot_bias2 <- function(index_df) {
@@ -90,7 +91,8 @@ evaluate_rmse <- function(index_df) {
     group_by(opmod, estmod) %>%
     summarize(rmse = sqrt(mean(sq_err)), .groups = "drop") %>%
     select(opmod, estmod, rmse) %>%
-    mutate(parval = map2_dbl(study, opmod, get_om_parval))
+    mutate(parval = map2_dbl(study, opmod, get_om_parval),
+           estmod = factor(estmod, levels = estmods))
 }
 
 plot_rmse2 <- function(index_df) {
@@ -104,7 +106,8 @@ plot_rmse2 <- function(index_df) {
 
 evaluate_calibration <- function(index_df) {
   index_df %>%
-    mutate(pnorm = pnorm(index_true, index_unb, unb_sd)) %>%
+    mutate(pnorm = pnorm(index_true, index_unb, unb_sd),
+           estmod = factor(estmod, levels = estmods)) %>%
     ggplot(aes(x = pnorm, y = stat(density), fill = estmod)) +
     geom_histogram(breaks = seq(0.0, 1.0, 0.1)) +
     geom_hline(yintercept = 1, linetype = "dashed") +
@@ -120,7 +123,8 @@ evaluate_calibration <- function(index_df) {
 
 plot_index_devs <- function(index_df) {
   index_df %>%
-    mutate(dev = index_est - index_true) %>%
+    mutate(dev = index_est - index_true,
+           estmod = factor(estmod, levels = estmods)) %>%
     ggplot(aes(x = year, y = dev, color = estmod, group = repl)) +
     geom_line(alpha = 0.6) +
     geom_hline(yintercept = 0, linetype = 2) +
@@ -130,6 +134,7 @@ plot_index_devs <- function(index_df) {
 
 plot_bias <- function(index_df) {
   index_df %>%
+    mutate(estmod = factor(estmod, levels = estmods))
     ggplot(aes(x = index_true, y = index_est, color = estmod, group = repl)) +
     geom_point(alpha = 0.6) +
     geom_abline(slope = 1, intercept = 0, linetype = 2) +
