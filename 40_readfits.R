@@ -232,3 +232,5 @@ for (study in studies) {
   ggsave(file.path(eval_dir, study, "index_devs.png"), width = 7, height = 7, index_devs)
   ggsave(file.path(eval_dir, study, "rmse_plot.png"), rmse_plot)
 }
+
+rmarkdown::render("41_postproc_report.Rmd")

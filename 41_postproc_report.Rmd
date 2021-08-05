@@ -1,0 +1,139 @@
+---
+title: Spatially varying catchability simulation study results
+author: John Best
+date: "`r Sys.time()`"
+---
+
+```{r echo=FALSE,messages=FALSE,warnings=FALSE}
+library(tidyverse)
+eval_dir <- normalizePath("evaluation")
+knitr::opts_chunk$set(echo = FALSE)
+
+studies <- c("qdevscaling",
+             "sharedq",
+             "prefintensity",
+             "densdepq")
+estmods <- c("model",
+             "survey",
+             "spatial_ab",
+             "spatial_q")
+```
+
+# Operating model descriptions
+
+- **Catchability deviation scaling**: Varies the magnitude of spatial deviations
+  in catchability
+- **Shared catchabilty deviations**: Survey vessels are also affected by
+  catchability deviations, with the intensity scaled as a fraction of the
+  deviation experienced by the commercial fleet
+- **Preference intensity**: The commercial fleet chooses fishing locations based
+  on the product of abundance and catchability raised to a power
+- **Density-dependent catchability**: Catchability is a function of abundance;
+  catchability increases linearly with abundance.
+  
+# Estimation model descriptions
+
+- **`model`**: Simple, non-spatial GLM
+- **`survey`**: Uses only survey data, includes a spatial random effect
+- **`spatial_ab`**: Uses survey data plus 4,000 commercial observations,
+  includes an abundance spatial random effect
+- **`spatial_q`**: Uses survey data plus 4,000 commercial observations, includes
+  both abundance and catchability spatial random effects
+
+# Successful model fits
+
+The following tables list the number of model fits that are used in the
+following figures. The goal is 100 replicates for each, but this takes multiple
+days of computation time, so this is the set currently complete.
+
+## Catchability deviation scaling
+
+```{r}
+read_csv(file.path(eval_dir, studies[1], "pdhess_wide.csv"),
+         col_types = cols(estmod = col_factor(levels = estmods),
+                          .default = col_integer())) %>%
+  arrange(estmod) %>%
+  knitr::kable(.)
+```
+
+## Shared catchability deviations
+
+```{r}
+read_csv(file.path(eval_dir, studies[2], "pdhess_wide.csv"),
+         col_types = cols(estmod = col_factor(levels = estmods),
+                          .default = col_integer())) %>%
+  arrange(estmod) %>%
+  knitr::kable(.)
+```
+
+## Preference intensity
+
+```{r}
+read_csv(file.path(eval_dir, studies[3], "pdhess_wide.csv"),
+         col_types = cols(estmod = col_factor(levels = estmods),
+                          .default = col_integer())) %>%
+  arrange(estmod) %>%
+  knitr::kable(.)
+```
+
+## Density-dependent catchability
+
+```{r}
+read_csv(file.path(eval_dir, studies[4], "pdhess_wide.csv"),
+         col_types = cols(estmod = col_factor(levels = estmods),
+                          .default = col_integer())) %>%
+  arrange(estmod) %>%
+  knitr::kable(.)
+```
+
+# RMSE
+
+## Catchability deviation scaling
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[1], "rmse_plot.svg"))
+```
+
+## Shared catchability deviations
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[2], "rmse_plot.svg"))
+```
+
+## Preference intensity
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[3], "rmse_plot.svg"))
+```
+
+## Density-dependent catchability
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[4], "rmse_plot.svg"))
+```
+
+# Bias
+
+## Catchability deviation scaling
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[1], "bias2_plot.svg"))
+```
+
+## Shared catchability deviations
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[2], "bias2_plot.svg"))
+```
+
+## Preference intensity
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[3], "bias2_plot.svg"))
+```
+
+## Density-dependent catchability
+
+```{r}
+knitr::include_graphics(file.path(eval_dir, studies[4], "bias2_plot.svg"))
+```
