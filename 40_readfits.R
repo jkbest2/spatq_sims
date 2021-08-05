@@ -134,7 +134,7 @@ plot_index_devs <- function(index_df) {
 
 plot_bias <- function(index_df) {
   index_df %>%
-    mutate(estmod = factor(estmod, levels = estmods))
+    mutate(estmod = factor(estmod, levels = estmods)) %>%
     ggplot(aes(x = index_true, y = index_est, color = estmod, group = repl)) +
     geom_point(alpha = 0.6) +
     geom_abline(slope = 1, intercept = 0, linetype = 2) +
