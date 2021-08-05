@@ -73,15 +73,24 @@ evaluate_bias <- function(index_df) {
 }
 
 plot_bias2 <- function(index_df) {
-  bias_df <- evaluate_bias(index_df)
+  study <- index_df$study[1]
+  opmods <- unique(index_df$opmod)
+  estmods <- unique(index_df$estmod)
+
+  bias_df <- evaluate_bias(index_df) %>%
+    mutate(parval = factor(parval))
+
+  x_pos <- position_dodge(width = 0.5)
+
   ggplot(bias_df, aes(x = parval, y = delta,
                       ymin = ci_lower, ymax = ci_upper,
-                      color = estmod)) +
-    geom_line() +
-    geom_point() +
-    geom_errorbar() +
+                      color = estmod, group = estmod)) +
+    geom_line(position = x_pos) +
+    geom_point(position = x_pos) +
+    geom_errorbar(position = x_pos, width = 1 / length(estmods)) +
     geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
-    labs(x = get_om_parlabel(index_df$study[1]),
+    scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
+    labs(x = get_om_parlabel(study),
          y = "δ bias metric")
 }
 
@@ -96,11 +105,17 @@ evaluate_rmse <- function(index_df) {
 }
 
 plot_rmse2 <- function(index_df) {
-  rmse_df <- evaluate_rmse(index_df)
-  ggplot(rmse_df, aes(x = parval, y = rmse, color = estmod)) +
+  study <- index_df$study[1]
+  opmods <- unique(index_df$opmod)
+  estmods <- unique(index_df$estmod)
+  rmse_df <- evaluate_rmse(index_df) %>%
+    mutate(parval = factor(parval))
+  ggplot(rmse_df, aes(x = parval, y = rmse, color = estmod, group = estmod)) +
     geom_line() +
     geom_point() +
-    labs(x = get_om_parlabel(index_df$study[1]),
+    scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
+    scale_y_continuous(limits = c(0, NA), expand = expansion(c(0, 0.1), c(0, 0))) +
+    labs(x = get_om_parlabel(study),
          y = "RMSE")
 }
 
