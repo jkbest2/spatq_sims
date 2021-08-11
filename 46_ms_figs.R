@@ -63,7 +63,7 @@ get_om_parlabel <- function(study) {
 
 evaluate_bias <- function(index_df) {
   index_df %>%
-    group_by(opmod, estmod) %>%
+    group_by(study, opmod, estmod) %>%
     nest() %>%
     mutate(mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true),
                                 data = .x)),
