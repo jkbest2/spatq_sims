@@ -9,13 +9,16 @@ if (interactive()) {
   library(spatq)
 }
 library(tidyverse)
+library(patchwork)
 
 root_dir <- "."
+eval_dir <- "ms_figs"
 ## Which simulation study are we fitting?
 studies <- c("qdevscaling",
              "sharedq",
              "prefintensity",
              "densdepq")
+names(studies) <- studies # So `lapply` outputs named list
 ## What range of replicates are going to be fit?
 repls <- factor(1:100)
 ## How many years to fit?
@@ -39,8 +42,10 @@ get_mgc <- function(fitlist) {
 }
 
 get_om_parval <- function(study, opmod = 1:6) {
+  qds <- 10 ^ (seq(-3, -0.5, 0.5))
+  qdcv <- sqrt(exp(qds ^ 2) - 1)
   studyvals <- switch(study,
-                      qdevscaling = 10 ^ seq(-3, -0.5, 0.5),
+                      qdevscaling = qdcv,
                       sharedq = seq(0, 1, 0.2),
                       prefintensity = c(0, 1, 2, 4, 8, 16),
                       densdepq = seq(0, 1.25, 0.25))
@@ -49,7 +54,8 @@ get_om_parval <- function(study, opmod = 1:6) {
 
 get_om_parlabel <- function(study) {
   switch(study,
-         qdevscaling = "log catchability deviation SD",
+         ## qdevscaling = "log catchability deviation SD",
+         qdevscaling = "Spatial catchability CV"
          sharedq = "Prop shared catchabilty dev",
          prefintensity = "Preference power",
          densdepq = "Density dependent multiplier")
@@ -91,13 +97,14 @@ plot_bias2 <- function(index_df) {
     geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
     scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
     labs(x = get_om_parlabel(study),
-         y = "δ bias metric")
+         y = "δ bias metric",
+         color = "Estimation\nmodel")
 }
 
 evaluate_rmse <- function(index_df) {
   index_df %>%
     mutate(sq_err = (index_unb - index_true)^2) %>%
-    group_by(opmod, estmod) %>%
+    group_by(study, opmod, estmod) %>%
     summarize(rmse = sqrt(mean(sq_err)), .groups = "drop") %>%
     select(opmod, estmod, rmse) %>%
     mutate(parval = map2_dbl(study, opmod, get_om_parval),
@@ -116,7 +123,8 @@ plot_rmse2 <- function(index_df) {
     scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
     scale_y_continuous(limits = c(0, NA), expand = expansion(c(0, 0.1), c(0, 0))) +
     labs(x = get_om_parlabel(study),
-         y = "RMSE")
+         y = "RMSE",
+         color = "Estimation\nmodel")
 }
 
 evaluate_calibration <- function(index_df) {
@@ -158,10 +166,8 @@ plot_bias <- function(index_df) {
     guides(color = "none")
 }
 
-eval_dir <- "ms_figs"
-pdonly <- TRUE
-
-for (study in studies) {
+## for (study in studies) {
+postproc <- function(study, pdonly = TRUE) {
   spec_df <- cross_df(list(study = study,
                            repl = repls,
                            opmod = opmods,
@@ -216,22 +222,92 @@ for (study in studies) {
   index_devs <- plot_index_devs(index_df)
   rmse_plot <- plot_rmse2(index_df)
 
-  write_csv(pdhess_df, file.path(eval_dir, study, "pdhess_wide.csv"))
-  write_csv(bias_df, file.path(eval_dir, study, "bias.csv"))
-  write_csv(bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
-  write_csv(rmse_df, file.path(eval_dir, study, "rmse.csv"))
-  write_csv(rmse_wide, file.path(eval_dir, study, "rmse_wide.csv"))
-
-  w <- 6
-  h <- 4
-  ggsave(file.path(eval_dir, study, "bias_plot.svg"), bias_plot, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "bias2_plot.svg"), bias2_plot, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "calibration.svg"), calibration_plot, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "index_devs.svg"), index_devs, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "rmse_plot.svg"), rmse_plot, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "bias_plot.png"), bias_plot, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "bias2_plot.png"), bias2_plot, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "calibration.png"), calibration_plot, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "index_devs.png"), index_devs, width = w, height = h)
-  ggsave(file.path(eval_dir, study, "rmse_plot.png"), rmse_plot)
+  list(pdhess_df = pdhess_df,
+       bias_df = bias_df,
+       bias_wide = bias_wide,
+       rmse_df = rmse_df,
+       rise_wide = rmse_wide,
+       bias_plot = bias_plot,
+       bias2_plot = bias2_plot,
+       calibration_plot = calibration_plot,
+       index_devs = index_devs,
+       rmse_plot = rmse_plot)
 }
+
+save_tables <- function(studypost, eval_dir) {
+  write_csv(studypost$pdhess_df, file.path(eval_dir, study, "pdhess_wide.csv"))
+  write_csv(studypost$bias_df, file.path(eval_dir, study, "bias.csv"))
+  write_csv(studypost$bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
+  write_csv(studypost$rmse_df, file.path(eval_dir, study, "rmse.csv"))
+  write_csv(studypost$rmse_wide, file.path(eval_dir, study, "rmse_wide.csv"))
+  invisible(TRUE)
+}
+
+save_plots <- function(studypost, eval_dir, width = 6, height = 4) {
+  ggsave(file.path(eval_dir, study, "bias_plot.svg"),
+         studypost$bias_plot,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "bias2_plot.svg"),
+         studypost$bias2_plot,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "calibration.svg"),
+         studypost$calibration_plot,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "index_devs.svg"),
+         studypost$index_devs,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "rmse_plot.svg"),
+         studypost$rmse_plot,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "bias_plot.png"),
+         studypost$bias_plot,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "bias2_plot.png"),
+         studypost$bias2_plot,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "calibration.png"),
+         studypost$calibration_plot,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "index_devs.png"),
+         studypost$index_devs,
+         width = width, height = height)
+  ggsave(file.path(eval_dir, study, "rmse_plot.png"),
+         studypost$rmse_plot,
+         width = width, height = height)
+  invisible(TRUE)
+}
+
+studypost <- lapply(studies, postproc)
+saveRDS(studypost, file.path(eval_dir, "studypost.Rdata"))
+sapply(studypost, save_tables, eval_dir = eval_dir)
+sapply(studypost, save_plots, eval_dir = eval_dir)
+
+bias_all <- studypost$qdevscaling$bias2_plot +
+  studypost$sharedq$bias2_plot +
+  studypost$prefintensity$bias2_plot +
+  studypost$densdepq$bias2_plot +
+  plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
+              guides = "collect")
+ggsave(file.path(eval_dir, "bias_all.svg"),
+       bias_all,
+       width = 7, height = 7)
+
+rmse_all <- studypost$qdevscaling$rmse_plot +
+  studypost$sharedq$rmse_plot +
+  studypost$prefintensity$rmse_plot +
+  studypost$densdepq$rmse_plot +
+  plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
+              guides = "collect")
+ggsave(file.path(eval_dir, "rmse_all.svg"),
+       rmse_all,
+       width = 7, height = 7)
+
+calibration_all <- studypost$qdevscaling$calibration_plot +
+  studypost$sharedq$calibration_plot +
+  studypost$prefintensity$calibration_plot +
+  studypost$densdepq$calibration_plot +
+  plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
+              guides = "collect")
+ggsave(file.path(eval_dir, "calibration_all.svg"),
+       calibration_all,
+       width = 7, height = 7)
