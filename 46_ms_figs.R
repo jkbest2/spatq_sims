@@ -73,7 +73,7 @@ evaluate_bias <- function(index_df) {
            ci = map(mod, confint, parm = "log(raw_true)"),
            ci_lower = map_dbl(ci, pluck, 1),
            ci_upper = map_dbl(ci, pluck, 2)) %>%
-    select(opmod, estmod, delta, sigma, ci_lower, ci_upper) %>%
+    select(study, opmod, estmod, delta, sigma, ci_lower, ci_upper) %>%
     mutate(parval = map2_dbl(study, opmod, get_om_parval),
            estmod = factor(estmod, levels = estmods))
 }
@@ -106,7 +106,7 @@ evaluate_rmse <- function(index_df) {
     mutate(sq_err = (index_unb - index_true)^2) %>%
     group_by(study, opmod, estmod) %>%
     summarize(rmse = sqrt(mean(sq_err)), .groups = "drop") %>%
-    select(opmod, estmod, rmse) %>%
+    select(study, opmod, estmod, rmse) %>%
     mutate(parval = map2_dbl(study, opmod, get_om_parval),
            estmod = factor(estmod, levels = estmods))
 }
