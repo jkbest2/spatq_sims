@@ -55,7 +55,7 @@ get_om_parval <- function(study, opmod = 1:6) {
 get_om_parlabel <- function(study) {
   switch(study,
          ## qdevscaling = "log catchability deviation SD",
-         qdevscaling = "Spatial catchability CV"
+         qdevscaling = "Spatial catchability CV",
          sharedq = "Prop shared catchabilty dev",
          prefintensity = "Preference power",
          densdepq = "Density dependent multiplier")
