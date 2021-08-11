@@ -166,7 +166,6 @@ plot_bias <- function(index_df) {
     guides(color = "none")
 }
 
-## for (study in studies) {
 postproc <- function(study, pdonly = TRUE) {
   spec_df <- cross_df(list(study = study,
                            repl = repls,
@@ -222,7 +221,8 @@ postproc <- function(study, pdonly = TRUE) {
   index_devs <- plot_index_devs(index_df)
   rmse_plot <- plot_rmse2(index_df)
 
-  list(pdhess_df = pdhess_df,
+  list(study = study,
+       pdhess_df = pdhess_df,
        bias_df = bias_df,
        bias_wide = bias_wide,
        rmse_df = rmse_df,
@@ -235,6 +235,7 @@ postproc <- function(study, pdonly = TRUE) {
 }
 
 save_tables <- function(studypost, eval_dir) {
+  study <- studypost$study
   write_csv(studypost$pdhess_df, file.path(eval_dir, study, "pdhess_wide.csv"))
   write_csv(studypost$bias_df, file.path(eval_dir, study, "bias.csv"))
   write_csv(studypost$bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
@@ -244,6 +245,7 @@ save_tables <- function(studypost, eval_dir) {
 }
 
 save_plots <- function(studypost, eval_dir, width = 6, height = 4) {
+  study <- studypost$study
   ggsave(file.path(eval_dir, study, "bias_plot.svg"),
          studypost$bias_plot,
          width = width, height = height)
