@@ -61,6 +61,14 @@ get_om_parlabel <- function(study) {
          densdepq = "Density dependent multiplier")
 }
 
+get_study_title <- function(study) {
+  switch(study,
+         qdevscaling = "Spatial catchability variability",
+         sharedq = "Shared spatial catchability variability",
+         prefintensity = "Preference intensity",
+         densdepq = "Density-dependent catchability")
+}
+
 evaluate_bias <- function(index_df) {
   index_df %>%
     group_by(study, opmod, estmod) %>%
@@ -226,7 +234,7 @@ postproc <- function(study, pdonly = TRUE) {
        bias_df = bias_df,
        bias_wide = bias_wide,
        rmse_df = rmse_df,
-       rise_wide = rmse_wide,
+       rmse_wide = rmse_wide,
        bias_plot = bias_plot,
        bias2_plot = bias2_plot,
        calibration_plot = calibration_plot,
@@ -285,9 +293,13 @@ sapply(studypost, save_tables, eval_dir = eval_dir)
 sapply(studypost, save_plots, eval_dir = eval_dir)
 
 bias_all <- studypost$qdevscaling$bias2_plot +
+  ggtitle(get_study_title(studypost$qdevscaling$study)) +
   studypost$sharedq$bias2_plot +
+  ggtitle(get_study_title(studypost$sharedq$study)) +
   studypost$prefintensity$bias2_plot +
+  ggtitle(get_study_title(studypost$prefintensity$study)) +
   studypost$densdepq$bias2_plot +
+  ggtitle(get_study_title(studypost$densdepq$study)) +
   plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
               guides = "collect")
 ggsave(file.path(eval_dir, "bias_all.svg"),
@@ -295,9 +307,13 @@ ggsave(file.path(eval_dir, "bias_all.svg"),
        width = 7, height = 7)
 
 rmse_all <- studypost$qdevscaling$rmse_plot +
+  ggtitle(get_study_title(studypost$qdevscaling$study)) +
   studypost$sharedq$rmse_plot +
+  ggtitle(get_study_title(studypost$sharedq$study)) +
   studypost$prefintensity$rmse_plot +
+  ggtitle(get_study_title(studypost$prefintensity$study)) +
   studypost$densdepq$rmse_plot +
+  ggtitle(get_study_title(studypost$densdepq$study)) +
   plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
               guides = "collect")
 ggsave(file.path(eval_dir, "rmse_all.svg"),
@@ -305,9 +321,13 @@ ggsave(file.path(eval_dir, "rmse_all.svg"),
        width = 7, height = 7)
 
 calibration_all <- studypost$qdevscaling$calibration_plot +
+  ggtitle(get_study_title(studypost$qdevscaling$study)) +
   studypost$sharedq$calibration_plot +
+  ggtitle(get_study_title(studypost$sharedq$study)) +
   studypost$prefintensity$calibration_plot +
+  ggtitle(get_study_title(studypost$prefintensity$study)) +
   studypost$densdepq$calibration_plot +
+  ggtitle(get_study_title(studypost$densdepq$study)) +
   plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
               guides = "collect")
 ggsave(file.path(eval_dir, "calibration_all.svg"),
