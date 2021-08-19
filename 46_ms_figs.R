@@ -64,7 +64,7 @@ get_om_parlabel <- function(study) {
 get_study_title <- function(study) {
   switch(study,
          qdevscaling = "Spatial catchability variability",
-         sharedq = "Shared spatial catchability variability",
+         sharedq = "Shared spatial catchability",
          prefintensity = "Preference intensity",
          densdepq = "Density-dependent catchability")
 }
@@ -301,10 +301,11 @@ bias_all <- studypost$qdevscaling$bias2_plot +
   studypost$densdepq$bias2_plot +
   ggtitle(get_study_title(studypost$densdepq$study)) +
   plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
-              guides = "collect")
+              guides = "collect") &
+  theme(legend.position = "bottom")
 ggsave(file.path(eval_dir, "bias_all.svg"),
        bias_all,
-       width = 7, height = 7)
+       width = 8, height = 6)
 
 rmse_all <- studypost$qdevscaling$rmse_plot +
   ggtitle(get_study_title(studypost$qdevscaling$study)) +
@@ -315,10 +316,11 @@ rmse_all <- studypost$qdevscaling$rmse_plot +
   studypost$densdepq$rmse_plot +
   ggtitle(get_study_title(studypost$densdepq$study)) +
   plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
-              guides = "collect")
+              guides = "collect") &
+  theme(legend.position = "bottom")
 ggsave(file.path(eval_dir, "rmse_all.svg"),
        rmse_all,
-       width = 7, height = 7)
+       width = 8, height = 6)
 
 calibration_all <- studypost$qdevscaling$calibration_plot +
   ggtitle(get_study_title(studypost$qdevscaling$study)) +
