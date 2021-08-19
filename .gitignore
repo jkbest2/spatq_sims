@@ -20,3 +20,6 @@ coordref.csv
 /misspec_kappa/
 slurm-*.out
 *_cache
+*.feather
+/ms_figs/
+/eval_test/
