@@ -69,3 +69,33 @@ data(pop_df) *
 
 mod_st = lm(@formula(log(survey_pop) ~ -1 + log(tot_pop) + repl), pop_df)
 mod_ct = lm(@formula(log(tot_catch) ~ -1 + log(tot_pop) + repl), pop_df)
+
+function bias_metric(formula, df::AbstractDataFrame)
+    mod = lm(formula, df)
+    coef(mod)[1]
+end
+
+form_st = @formula(log(pop) ~ -1 + log(tot_pop) + repl)
+form_ct = @formula(log(catch_biomass) ~ -1 + log(tot_pop) + repl)
+
+survey2_df = leftjoin(survey_df, pop_df[!, [:repl, :year, :tot_pop]], on = [:repl, :year])
+survey_gdf = groupby(survey2_df, [:repl, :loc_idx])
+
+delta_st = Vector{Float64}()
+# delta_ct = Vector{Float64}()
+for sdf in survey_gdf
+    push!(delta_st, bias_metric(form_st, sdf))
+    # push!(delta_ct, bias_metric(form_ct, sdf))
+end
+
+survey3_df = combine(survey_gdf,
+                     :repl => unique => :repl,
+                     :loc_idx => unique => :loc_idx,
+                     :pop => maximum => :pop_max)
+survey3_df.delta = delta_st
+
+## Shows some systematic bias/index response depending on initial population
+## under pref. sampling. Why does this only show up in spatial estimation
+## models?
+data(survey3_df) *
+    mapping(:pop_max, :delta) |> draw
