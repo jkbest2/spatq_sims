@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Job name
-#SBATCH --job-name=sim_prefintensity
+#SBATCH --job-name=sim_habq
 
 ## Allocations definition
 #SBATCH --account=stf
