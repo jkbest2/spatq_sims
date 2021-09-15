@@ -15,7 +15,8 @@ root_dir <- "."
 studies <- c("qdevscaling",
              "sharedq",
              "prefintensity",
-             "densdepq")
+             "densdepq",
+             "habq")
 ## What range of replicates are going to be fit?
 repls <- factor(1:100)
 ## How many years to fit?
@@ -43,7 +44,8 @@ get_om_parval <- function(study, opmod = 1:6) {
                       qdevscaling = 10 ^ seq(-3, -0.5, 0.5),
                       sharedq = seq(0, 1, 0.2),
                       prefintensity = c(0, 1, 2, 4, 8, 16),
-                      densdepq = seq(0, 1.25, 0.25))
+                      densdepq = seq(0, 1.25, 0.25),
+                      habq = 1.75 ^ (-2:3))
   studyvals[opmod]
 }
 
