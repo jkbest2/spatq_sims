@@ -15,7 +15,7 @@ root_dir <- "."
 eval_dir <- "ms_figs"
 ## Which simulation study are we fitting?
 studies <- c("qdevscaling",
-             "sharedq",
+             "habq",
              "prefintensity",
              "densdepq")
 names(studies) <- studies # So `lapply` outputs named list
@@ -46,27 +46,27 @@ get_om_parval <- function(study, opmod = 1:6) {
   qdcv <- sqrt(exp(qds ^ 2) - 1)
   studyvals <- switch(study,
                       qdevscaling = qdcv,
-                      sharedq = seq(0, 1, 0.2),
+                      habq = seq(0, 1, 0.2),
                       prefintensity = c(0, 1, 2, 4, 8, 16),
-                      densdepq = seq(0, 1.25, 0.25))
+                      densdepq = seq(0, 1.25, 0.25),
+                      habq = 1.75 ^ (-2:3))
   studyvals[opmod]
 }
 
 get_om_parlabel <- function(study) {
   switch(study,
-         ## qdevscaling = "log catchability deviation SD",
          qdevscaling = "Spatial catchability CV",
-         sharedq = "Prop shared catchabilty dev",
          prefintensity = "Preference power",
-         densdepq = "Density dependent multiplier")
+         densdepq = "Density dependent multiplier",
+         habq = "Relative habitat preference")
 }
 
 get_study_title <- function(study) {
   switch(study,
-         qdevscaling = "Spatial catchability variability",
-         sharedq = "Shared spatial catchability",
-         prefintensity = "Preference intensity",
-         densdepq = "Density-dependent catchability")
+         qdevscaling = "a. Spatial catchability variability",
+         habq = "b. Habitat-dependent catchability",
+         prefintensity = "c. Preference intensity",
+         densdepq = "d. Density-dependent catchability",
 }
 
 evaluate_bias <- function(index_df) {
@@ -287,51 +287,102 @@ save_plots <- function(studypost, eval_dir, width = 6, height = 4) {
   invisible(TRUE)
 }
 
+get_bias2_ylims <- function(studypost) {
+  bias_data <- map(studypost, pluck, "bias2_plot", "data")
+  bias_min <- map_dbl(bias_data, ~ min(.$ci_lower))
+  bias_max <- map_dbl(bias_data, ~ max(.$ci_upper))
+  c(min(bias_min), max(bias_max))
+}
+
+get_rmse_ylims <- function(studypost) {
+  rmse_data <- map(studypost, pluck, "rmse_plot", "data")
+  rmse_max <- map_dbl(rmse_data, ~ max(.$rmse))
+  c(0, max(rmse_max))
+}
+
 studypost <- lapply(studies, postproc)
 saveRDS(studypost, file.path(eval_dir, "studypost.Rdata"))
 sapply(studypost, save_tables, eval_dir = eval_dir)
 sapply(studypost, save_plots, eval_dir = eval_dir)
 
-bias_all <- studypost$qdevscaling$bias2_plot +
-  ggtitle(get_study_title(studypost$qdevscaling$study)) +
-  studypost$sharedq$bias2_plot +
-  ggtitle(get_study_title(studypost$sharedq$study)) +
-  studypost$prefintensity$bias2_plot +
-  ggtitle(get_study_title(studypost$prefintensity$study)) +
-  studypost$densdepq$bias2_plot +
-  ggtitle(get_study_title(studypost$densdepq$study)) +
-  plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
-              guides = "collect") &
-  theme(legend.position = "bottom")
+refine_bias2_plot <- function(studypost, study, ylims) {
+  studypost[[study]]$bias2_plot +
+    ylim(ylims) +
+    ylab(NULL) +
+    ggtitle(get_study_title(study))
+}
+
+make_ylab_plot <- function(label) {
+  ggplot(data.frame(l = label, x = 1, y = 1)) +
+      geom_text(aes(x, y, label = l), angle = 90) +
+      theme_void() +
+      coord_cartesian(clip = "off")
+}
+
+collect_bias2_plots <- function(studypost) {
+  ## Get y-axis limits so everything is on the same scale
+  bias2_ylims <- get_bias2_ylims(studypost)
+
+  ## make blank plot with y-label only
+  ylab_plot <- make_ylab_plot("δ bias metric")
+
+  ## Make the plot
+  ylab_plot +
+    (refine_bias2_plot(studypost, "qdevscaling", bias2_ylims) +
+     refine_bias2_plot(studypost, "habq", bias2_ylims)) /
+    (refine_bias2_plot(studypost, "prefintensity", bias2_ylims) +
+     refine_bias2_plot(studypost, "densdepq", bias2_ylims)) +
+    plot_layout(widths = c(1, 49),
+                guides = "collect") &
+    theme(legend.position = "bottom")
+}
+
+bias_all <- collect_bias2_plots(studypost)
 ggsave(file.path(eval_dir, "bias_all.svg"),
        bias_all,
        width = 8, height = 6)
 
-rmse_all <- studypost$qdevscaling$rmse_plot +
-  ggtitle(get_study_title(studypost$qdevscaling$study)) +
-  studypost$sharedq$rmse_plot +
-  ggtitle(get_study_title(studypost$sharedq$study)) +
-  studypost$prefintensity$rmse_plot +
-  ggtitle(get_study_title(studypost$prefintensity$study)) +
-  studypost$densdepq$rmse_plot +
-  ggtitle(get_study_title(studypost$densdepq$study)) +
-  plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
-              guides = "collect") &
-  theme(legend.position = "bottom")
+refine_rmse_plot <- function(studypost, study, ylims) {
+  studypost[[study]]$rmse_plot +
+    ylim(ylims) +
+    ylab(NULL) +
+    ggtitle(get_study_title(study))
+}
+
+collect_rmse_plots <- function(studypost) {
+  rmse_ylims <- get_rmse_ylims(studypost)
+
+  ylab_plot <- make_ylab_plot("RMSE")
+
+  ylab_plot +
+    (refine_rmse_plot(studypost, "qdevscaling", rmse_ylims) +
+     refine_rmse_plot(studypost, "habq", rmse_ylims)) /
+    (refine_rmse_plot(studypost, "prefintensity", rmse_ylims) +
+     refine_rmse_plot(studypost, "densdepq", rmse_ylims)) +
+    plot_layout(widths = c(1, 49),
+                guides = "collect") &
+    theme(legend.position = "bottom")
+}
+
+rmse_all <- collect_rmse_plots(studypost)
 ggsave(file.path(eval_dir, "rmse_all.svg"),
        rmse_all,
        width = 8, height = 6)
 
-calibration_all <- studypost$qdevscaling$calibration_plot +
-  ggtitle(get_study_title(studypost$qdevscaling$study)) +
-  studypost$sharedq$calibration_plot +
-  ggtitle(get_study_title(studypost$sharedq$study)) +
-  studypost$prefintensity$calibration_plot +
-  ggtitle(get_study_title(studypost$prefintensity$study)) +
-  studypost$densdepq$calibration_plot +
-  ggtitle(get_study_title(studypost$densdepq$study)) +
-  plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
-              guides = "collect")
+collect_calibration_plots <- function(studypost) {
+  studypost$qdevscaling$calibration_plot +
+    ggtitle(get_study_title(studypost$qdevscaling$study)) +
+    studypost$habq$calibration_plot +
+    ggtitle(get_study_title(studypost$habq$study)) +
+    studypost$prefintensity$calibration_plot +
+    ggtitle(get_study_title(studypost$prefintensity$study)) +
+    studypost$densdepq$calibration_plot +
+    ggtitle(get_study_title(studypost$densdepq$study)) +
+    plot_layout(ncol = 2, nrow = 2, byrow = TRUE,
+                guides = "collect")
+}
+
+calibration_all <- collect_calibration_plots(studypost)
 ggsave(file.path(eval_dir, "calibration_all.svg"),
        calibration_all,
-       width = 7, height = 7)
+       width = 8, height = 6)
