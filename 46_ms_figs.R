@@ -46,19 +46,18 @@ get_om_parval <- function(study, opmod = 1:6) {
   qdcv <- sqrt(exp(qds ^ 2) - 1)
   studyvals <- switch(study,
                       qdevscaling = qdcv,
-                      habq = seq(0, 1, 0.2),
+                      habq = 1.75 ^ (-2:3),
                       prefintensity = c(0, 1, 2, 4, 8, 16),
-                      densdepq = seq(0, 1.25, 0.25),
-                      habq = 1.75 ^ (-2:3))
+                      densdepq = seq(0, 1.25, 0.25))
   studyvals[opmod]
 }
 
 get_om_parlabel <- function(study) {
   switch(study,
          qdevscaling = "Spatial catchability CV",
+         habq = "Relative habitat preference",
          prefintensity = "Preference power",
-         densdepq = "Density dependent multiplier",
-         habq = "Relative habitat preference")
+         densdepq = "Density dependent multiplier")
 }
 
 get_study_title <- function(study) {
