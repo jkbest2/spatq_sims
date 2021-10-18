@@ -66,7 +66,7 @@ get_study_title <- function(study) {
          qdevscaling = "a. Spatial catchability variability",
          habq = "b. Habitat-dependent catchability",
          prefintensity = "c. Preference intensity",
-         densdepq = "d. Density-dependent catchability",
+         densdepq = "d. Density-dependent catchability")
 }
 
 evaluate_bias <- function(index_df) {
