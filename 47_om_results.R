@@ -63,12 +63,34 @@ pop_df <- spec_df %>%
   unnest(pop) %>%
   filter(year <= 15)
 
-pop_traj <- ggplot(pop_df, aes(x = year, y = pop, group = repl)) +
-  geom_line(alpha = 0.2) +
-  facet_grid(studyf ~ opmod) +
-  ylim(0, 100) +
-  scale_x_continuous(name = "Year",  c(5, 10, 15)) +
-  theme_bw()
+## pop_traj <- ggplot(pop_df, aes(x = year, y = pop, group = repl)) +
+##   geom_line(alpha = 0.2) +
+##   facet_grid(studyf ~ opmod) +
+##   ylim(0, 100) +
+##   scale_x_continuous(name = "Year",  c(5, 10, 15)) +
+##   theme_bw()
+## ggsave(file.path(eval_dir, "pop_trajectories.svg"),
+##        pop_traj,
+##        width = 8, height = 6)
+
+traj_plot <- function(data) {
+  data %>%
+  mutate(parval = map2_dbl(study, opmod, get_om_parval),
+         parval_lab = signif(parval, 2)) %>%
+  ggplot(aes(x = year, y = pop, group = repl)) +
+    geom_line(alpha = 0.2) +
+    facet_grid(study ~ parval_lab) +
+    ylim(0, 100) +
+    scale_x_continuous(name = "Year", c(5, 10, 15)) +
+    theme_bw()
+}
+
+pop_df_nest <- pop_df %>%
+  group_by(studyf) %>%
+  nest()
+traj_subplots <- map(pop_df_nest$data, traj_plot)
+pop_traj <- reduce(traj_subplots, `+`) +
+  plot_layout(ncol = 1)
 ggsave(file.path(eval_dir, "pop_trajectories.svg"),
        pop_traj,
        width = 8, height = 6)
@@ -128,10 +150,7 @@ ylims <- c(min(pop_df[pop_df$year == 15, "pop"]),
            max(pop_df[pop_df$year == 15, "pop"]))
 
 depl_subplots <- map(depl_df_nest$data, depl_boxplot, ylims = ylims)
-depl_subplots[[1]] +
-  depl_subplots[[2]] +
-  depl_subplots[[3]] +
-  depl_subplots[[4]] +
+depl_plot <- reduce(depl_subplots, `+`) +
   plot_layout(ncol = 1)
 ggsave(file.path(eval_dir, "depl_fig.svg"),
        width = 8, height = 8)
