@@ -1,0 +1,108 @@
+---
+title: Update on Habitat-based catchability
+author: John Best
+date: September 22, 2021
+---
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(hdf5r)
+```
+
+```{r}
+study <- "habq"
+repl <- 1
+opmod <- 6
+
+prep_path <- sim_file_paths(study, repl, opmod)$prep
+h5 <- h5file(prep_path, mode = "r")
+rocky_hab <- h5[["rocky_hab"]]$read()
+```
+
+```{r}
+study <- "habq"
+repl <- 1
+opmods <- 1:6
+
+init_pop <- lapply(opmods,
+                   function(om)
+                     read_popstate(study, repl, om, filetype = "h5")[, , 1])
+
+png("habq/init_pop.png", width = 768)
+plot_popstate(init_pop, plot_cols = 3)
+dev.off()
+```
+
+```{julia}
+using SpatQSims
+using Plots
+
+spec = HabQSpec(1, 1)
+hab = get_habitat(spec)
+
+heatmap(hab[2]; aspect_ratio = 1)
+```
+
+# manuscript
+
+## motivation
+
+Consistent sampling procedures in fishery-independent surveys allow a reasonable
+assumption of constant catchability over time so that indices of abundance can
+be derived from their catches. However, this limits the ability of the
+fishery-independent survey to adopt newer technologies and techniques that
+increase catchability. Fishery-dependent vessels are not constrained in this
+way, and often actively develop fishing methods that increase their
+catchability. This mismatch can reduce industry confidence in the accuracy of
+fishery-independent surveys (ref). One example of this is the ability of
+fishery-dependent vessels to trawl closer to or within areas of rocky habitat
+that the survey will not sample at all. If areas that are more difficult for the
+fishery-independent survey to sample are areas of higher abundance, the
+fishery-independent survey may miss important changes in abundance. This is
+particularly true if the fishery-dependent vessels are able to harvest fish from
+these areas. In this case, including fishery-dependent catches in an index of
+abundance can fill in the gaps of the fishery-independent survey.
+
+## operating model
+
+The next simulation study addresses the case where habitat is associated with
+both movement preference and catchability, and catchability differs between the
+fishery-independent survey and fishery-dependent vessels. For each of the 100
+replicates, a habitat covariate is generated from a Gaussian random field. The
+generated field is then thresholded so that 25% of the area is designated as
+"rocky" habitat. A movement preference for the rocky habitat relative to the
+non-rocky habitat is assigned a value between 0.3 (preference for non-rocky
+habitat) and 5 (strong preference for rocky habitat). A relative preference of 1
+is included in this range, indicating the case where there is no movement
+preference between the two habitat types. Catchability in the non-rocky habitat
+is 0.01 for both the fishery-independent survey and fishery-dependent vessels.
+Within the rocky habitat catchability for the fishery-dependent vessels is
+reduced to 0.001, while catchability for the fishery-dependent vessels is only
+reduced to 0.009. This represents the technology and technique differences
+between the two vessel types. From there, the simulation proceeds as with the
+other simulation studies.
+
+## results
+
+When fishery-independent surveys are subject to spatially varying catchability,
+indices of abundance derived from their catches can be hyperstable even in the
+absence of spatially varying abundance. Hyperstability increases with the fish's
+preference for the lower-catchability areas. Much of this hyperstability can be
+eliminated by including catches that are not subject to the same cathability
+reduction, and further still by including spatially varying catchability in the
+estimation model (Figure X).
+
+## discussion
+
+Fishery-dependent catches may contain important information that is not
+available from fishery-independent surveys, particularly in situations where the
+fishery-dependent vessels can fish areas marginally accessible to the
+fishery-independent survey. When these differences manifest as differences in
+catchability, including a spatial random effect to account for differences in
+catchability can further stabilize estimated indices of abundance.
+
+This technique could be extended by allowing temporal variation of the spatial
+catchability component of the estimation model. This would allow for a situation
+where the fishery-independent survey and the fishery-dependent vessels start
+with the same spatial catchability structure, but over time the
+fishery-dependent vessels develop techniques and technology that increases their
+catchability in particular areas of the fishery.
