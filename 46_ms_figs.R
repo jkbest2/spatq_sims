@@ -68,6 +68,14 @@ get_study_title <- function(study) {
          densdepq = "d. Density-dependent catchability")
 }
 
+get_base_om <- function(study, opmod) {
+  switch(study,
+         qdevscaling = 1,
+         habq = NA,
+         prefintensity = 1,
+         densdepq = 1)
+}
+
 evaluate_bias <- function(index_df) {
   index_df %>%
     group_by(study, opmod, estmod) %>%
