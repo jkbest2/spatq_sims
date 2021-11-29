@@ -22,7 +22,7 @@ qd_pop_plot = heatmap(qd_pop;
                       c = :viridis, aspect_ratio = 1,
                       title = "Abundance",
                       showaxis = false, ticks = false)
-plot(qd_hab_plot, qd_pref_plot, qd_pop_plot; size = (600, 1200), layout = (3, 1))
+plot(qd_hab_plot, qd_pref_plot, qd_pop_plot; size = (800, 800))
 savefig("opmod_results/qdevscaling_hab.svg")
 
 # Habq example
@@ -46,5 +46,5 @@ hq_pop_plot = heatmap(hq_pop;
                       c = :viridis, aspect_ratio = 1,
                       title = "Abundance",
                       showaxis = false, ticks = false)
-plot(hq_hab_plot, hq_pref_plot, hq_pop_plot; size = (600, 1200), layout = (3, 1))
+plot(hq_hab_plot, hq_pref_plot, hq_pop_plot; size = (800, 800))
 savefig("opmod_results/habq_hab.svg")
