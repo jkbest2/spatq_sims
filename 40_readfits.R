@@ -13,7 +13,7 @@ library(tidyverse)
 root_dir <- "."
 ## Which simulation study are we fitting?
 studies <- c("qdevscaling",
-             "sharedq",
+             ## "sharedq",
              "prefintensity",
              "densdepq",
              "habq")
@@ -54,7 +54,8 @@ get_om_parlabel <- function(study) {
          qdevscaling = "log catchability deviation SD",
          sharedq = "Prop shared catchabilty dev",
          prefintensity = "Preference power",
-         densdepq = "Density dependent multiplier")
+         densdepq = "Density dependent multiplier",
+         habq = "Rocky habitat preference")
 }
 
 evaluate_bias <- function(index_df) {
@@ -229,7 +230,7 @@ for (study in studies) {
   ggsave(file.path(eval_dir, study, "index_devs.svg"), index_devs)
   ggsave(file.path(eval_dir, study, "rmse_plot.svg"), rmse_plot)
   ggsave(file.path(eval_dir, study, "bias_plot.png"), width = 7, height = 7, bias_plot)
-  ggsave(file.path(eval_dir, study, "bias2_plot.png"), bias2_plot)
+  ggsave(file.path(eval_dir, study, "bias2_plot.png"), width = 10, height = 7, bias2_plot)
   ggsave(file.path(eval_dir, study, "calibration.png"), width = 7, height = 7, calibration_plot)
   ggsave(file.path(eval_dir, study, "index_devs.png"), width = 7, height = 7, index_devs)
   ggsave(file.path(eval_dir, study, "rmse_plot.png"), rmse_plot)
