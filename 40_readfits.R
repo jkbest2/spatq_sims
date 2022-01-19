@@ -16,7 +16,8 @@ studies <- c("qdevscaling",
              ## "sharedq",
              "prefintensity",
              "densdepq",
-             "habq")
+             "habq",
+             "bycatch")
 ## What range of replicates are going to be fit?
 repls <- factor(1:100)
 ## How many years to fit?
@@ -45,7 +46,8 @@ get_om_parval <- function(study, opmod = 1:6) {
                       sharedq = seq(0, 1, 0.2),
                       prefintensity = c(0, 1, 2, 4, 8, 16),
                       densdepq = seq(0, 1.25, 0.25),
-                      habq = 1.75 ^ (-2:3))
+                      habq = 2.0 ^ (-2:3),
+                      bycatch = seq(0, 1, 0.2))
   studyvals[opmod]
 }
 
@@ -55,7 +57,8 @@ get_om_parlabel <- function(study) {
          sharedq = "Prop shared catchabilty dev",
          prefintensity = "Preference power",
          densdepq = "Density dependent multiplier",
-         habq = "Rocky habitat preference")
+         habq = "Rocky habitat preference",
+         bycatch = "Comm catchability reduction")
 }
 
 evaluate_bias <- function(index_df) {
