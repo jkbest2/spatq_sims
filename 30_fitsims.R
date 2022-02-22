@@ -28,6 +28,7 @@ nblasthreads <- ntotcores %/% nparfits
 opmods <- 1:6
 estmods <- c("model",
              "survey",
+             "survey_spt",
              "spatial_ab",
              "spatial_q")
 root_dir = "."
