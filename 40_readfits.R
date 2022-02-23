@@ -28,7 +28,7 @@ opmods <- factor(1:6)
 ## recognized by om_* functions yet.
 estmods <- c("model",              # Non-spatial survey only
              "survey",             # Survey-only
-             ## "survey_spt",         # Spatiotemporal survey
+             "survey_spt",         # Spatiotemporal survey
              "spatial_ab",         # All data, spatial abundance
              "spatial_q")          # All data, spatial abundance + catchability
 
