@@ -1,3 +1,14 @@
 using SpatQSims
 
-prep_sims(parse(Int, ARGS[1]), "prep.h5", 100.0)
+simtypes = [
+    QDevScalingSpec,
+    # SharedQSpec,
+    PrefIntensitySpec,
+    DensityDependentQSpec,
+    HabQSpec,
+    BycatchSpec
+]
+
+for simtype in simtypes
+    prep_sims(simtype, 100)
+end
