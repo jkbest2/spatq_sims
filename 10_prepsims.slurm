@@ -14,10 +14,10 @@
 #SBATCH --time=2:00:00
 
 ## Number of cores per node
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=28
 
 ## Memory per node
-#SBATCH --mem=32G
+#SBATCH --mem=120G
 
 ## Set the working directory for this job.
 ## Directory must exist before submitting job.
