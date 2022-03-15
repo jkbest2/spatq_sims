@@ -17,7 +17,7 @@
 #SBATCH --time=1:00:00
 
 ## Memory per node
-#SBATCH --mem=100G
+#SBATCH --mem=120G
 
 ## Set the working directory for this job.
 ## Directory must exist before submitting job.
@@ -27,4 +27,4 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-julia --project -p 28 --check-bounds=no 20_runsims.jl
+julia --project -p 28 -L 20_gensims.jl --check-bounds=no 20_runsims.jl
