@@ -27,10 +27,9 @@ opmods <- factor(1:6)
 ## Names of the estimation models; can't use a factor because it's not
 ## recognized by om_* functions yet.
 estmods <- c("model",              # Non-spatial survey only
-             "survey",             # Survey-only
              "survey_spt",         # Spatiotemporal survey
-             "spatial_ab",         # All data, spatial abundance
-             "spatial_q")          # All data, spatial abundance + catchability
+             "sptemp_ab",          # All data, spatial abundance
+             "sptemp_q")           # All data, spatial abundance + catchability
 
 get_convcode <- function(fitlist) {
   pluck(fitlist, "fit", "convergence")
