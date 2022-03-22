@@ -19,8 +19,10 @@ coordref.csv
 /docs/gss2020/
 /misspec_kappa/
 slurm-*.out
+core.*
 *_cache
 *.feather
 /ms_figs/
 /eval_test/
+/evaluation/
 /om_results/
