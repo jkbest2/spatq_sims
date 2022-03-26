@@ -73,8 +73,12 @@ need_fit <- function(fitspec) {
   !file.exists(index_path(fitspec, "feather"))
 }
 
-create_res_dir(study = study,
-               repl = repls)
+if (!dir.exists(root_dir))
+  dir.create(root_dir, recursive = TRUE)
+walk(fitspec_ls,
+     function(fsl) {
+       create_res_dir(fsl$study, fsl$repl, fsl$root_dir)
+     })
 
 blas_set_num_threads(nblasthreads)
 
