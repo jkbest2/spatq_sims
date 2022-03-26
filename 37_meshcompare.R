@@ -1,12 +1,12 @@
 if (interactive()) {
   devtools::load_all("~/dev/spatq", helpers = FALSE)
-  study <- "qdevscaling"
-  repls <- 1:5
+  ## study <- "qdevscaling"
+  ## repls <- 1:5
 } else {
   library(spatq)
-  args <- commandArgs(trailingOnly = TRUE)
-  study <- args[1]
-  repls <- args[2]:args[3]
+  ## args <- commandArgs(trailingOnly = TRUE)
+  ## study <- args[1]
+  ## repls <- args[2]:args[3]
 }
 library(tidyverse)
 library(parallel)
@@ -21,36 +21,39 @@ if (is.na(ntotcores))
 
 nparfits <- as.numeric(Sys.getenv("SPATQ_PAR_FITS"))
 if (is.na(nparfits))
-  nparfits <- 7L
+  nparfits <- 2L
 
 nblasthreads <- ntotcores %/% nparfits
 
-opmods <- 1:6
-estmods <- c("model",
-             "survey_spt",
-             "sptemp_ab",
-             "sptemp_q")
-root_dir = "."
+repls <- 1:5
+studies <- c("qdevscaling",
+             "habq")
+opmods <- c(1, 3, 6)
+estmods <- c("survey_spt",
+             "sptemp_ab")
+mesh_res <- c("coarse", "medium", "fine")
+root_dir <- "./meshcompare"
 
 fitspec_ls <- cross(list(estmod = estmods,
                          opmod = opmods,
                          repl = repls,
-                         study = study,
-                         root_dir = root_dir))
+                         study = studies,
+                         mesh_res = mesh_res)) %>%
+  map(function(l) list_modify(l, root_dir = file.path(root_dir, l$mesh_res)))
 
-fit <- function(fit_spec, mesh_resolution = "coarse") {
+fit <- function(fit_spec) {
   spec <- spatq_simstudyspec(fit_spec)
   max_T <- 15
 
   ## Suppress warnings about NaNs during fitting
   suppressWarnings({
-    setup <- spatq_simsetup(study = spec$study,
-                            repl = spec$repl,
-                            opmod = spec$opmod,
-                            estmod = spec$estmod,
+    setup <- spatq_simsetup(study = fit_spec$study,
+                            repl = fit_spec$repl,
+                            opmod = fit_spec$opmod,
+                            estmod = fit_spec$estmod,
                             max_T = max_T,
                             index_step = 1,
-                            mesh_resolution = mesh_resolution)
+                            mesh_resolution = fit_spec$mesh_resolution)
     obj <- spatq_obj(setup)
     fit <- spatq_fit(obj)
     fit <- spatq_fit(obj, fit = fit, method = "BFGS")
