@@ -4,8 +4,8 @@
 #SBATCH --job-name=fit_meshcompare
 
 ## Allocations definition
-#SBATCH --account=stf
-#SBATCH --partition=stf
+#SBATCH --account=stf-ckpt
+#SBATCH --partition=ckpt
 
 ## Nodes
 #SBATCH --nodes=1
