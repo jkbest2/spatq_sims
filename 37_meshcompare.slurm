@@ -30,5 +30,5 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jkbest@uw.edu
 
-export SPATQ_PAR_FITS=2
+export SPATQ_PAR_FITS=4
 Rscript 37_meshcompare.R

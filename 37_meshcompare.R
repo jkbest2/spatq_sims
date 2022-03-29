@@ -25,20 +25,21 @@ if (is.na(nparfits))
 
 nblasthreads <- ntotcores %/% nparfits
 
-repls <- 1:5
+repls <- 1:3
 studies <- c("qdevscaling",
              "habq")
-opmods <- c(1, 3, 6)
-estmods <- c("survey_spt",
-             "sptemp_ab")
+opmods <- c(2, 5)
+## estmods <- c("survey_spt",
+##              "sptemp_ab")
+estmods <- "survey_spt"
 mesh_res <- c("coarse", "medium", "fine")
 root_dir <- "./meshcompare"
 
-fitspec_ls <- cross(list(estmod = estmods,
+fitspec_ls <- cross(list(mes_res = mesh_res,
+                         estmod = estmods,
                          opmod = opmods,
                          repl = repls,
-                         study = studies,
-                         mesh_res = mesh_res)) %>%
+                         study = studies)) %>%
   map(function(l) list_modify(l, root_dir = file.path(root_dir, l$mesh_res)))
 
 fit <- function(fit_spec) {
