@@ -163,6 +163,28 @@ plot_bias <- function(index_df) {
     guides(color = "none")
 }
 
+evaluate_mapcor <- function(res_df) {
+  res_df %>%
+    select(study, repl, opmod, estmod, spec, res) %>%
+    group_by(study, repl, opmod) %>%
+    ## Nest here so that the true populations are read once each instead of once
+    ## for each estimation model
+    nest() %>%
+    rowwise() %>%
+    mutate(true = list(read_popstate(study, repl, opmod, root_dir = root_dir, filetype = "h5"))) %>%
+    unnest(cols = data) %>%
+    mutate(est = map(res, read_estpop),
+           cor = map2_dbl(true, est, map_correlation)) %>%
+    select(study, repl, opmod, estmod, cor)
+}
+
+plot_mapcor <- function(cor_df) {
+    ggplot(cor_df, aes(x = estmod, y = cor, color = estmod)) +
+    geom_boxplot() +
+      facet_grid(~ opmod) +
+      guides(color = "none")
+}
+
 eval_dir <- "evaluation"
 pdonly <- TRUE
 
@@ -221,6 +243,9 @@ for (study in studies) {
   index_devs <- plot_index_devs(index_df)
   rmse_plot <- plot_rmse2(index_df)
 
+  cor_df <- evaluate_mapcor(res_df)
+  cor_plot <- plot_mapcor(cor_df)
+
   write_csv(pdhess_df, file.path(eval_dir, study, "pdhess_wide.csv"))
   write_csv(bias_df, file.path(eval_dir, study, "bias.csv"))
   write_csv(bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
@@ -231,11 +256,13 @@ for (study in studies) {
   ggsave(file.path(eval_dir, study, "calibration.svg"), calibration_plot)
   ggsave(file.path(eval_dir, study, "index_devs.svg"), index_devs)
   ggsave(file.path(eval_dir, study, "rmse_plot.svg"), rmse_plot)
+  ggsave(file.path(eval_dir, study, "mapcor_plot.svg"), cor_plot)
   ggsave(file.path(eval_dir, study, "bias_plot.png"), width = 7, height = 7, bias_plot)
   ggsave(file.path(eval_dir, study, "bias2_plot.png"), width = 10, height = 7, bias2_plot)
   ggsave(file.path(eval_dir, study, "calibration.png"), width = 7, height = 7, calibration_plot)
   ggsave(file.path(eval_dir, study, "index_devs.png"), width = 7, height = 7, index_devs)
-  ggsave(file.path(eval_dir, study, "rmse_plot.png"), rmse_plot)
+  ggsave(file.path(eval_dir, study, "rmse_plot.png"), width = 7, height = 7, rmse_plot)
+  ggsave(file.path(eval_dir, study, "mapcor_plot.png"), width = 10, height = 7, cor_plot)
 }
 
-rmarkdown::render("41_postproc_report.Rmd")
+#rmarkdown::render("41_postproc_report.Rmd")
