@@ -174,7 +174,7 @@ evaluate_mapcor <- function(res_df) {
     mutate(true = list(read_popstate(study, repl, opmod, root_dir = root_dir, filetype = "h5"))) %>%
     unnest(cols = data) %>%
     mutate(est = map(res, read_estpop),
-           cor = map2_dbl(true, est, map_correlation)) %>%
+           cor = map2_dbl(true, est, map_correlation, method = "spearman")) %>%
     select(study, repl, opmod, estmod, cor)
 }
 
@@ -227,7 +227,7 @@ for (study in studies) {
   bias_df <- evaluate_bias(index_df)
   bias_wide <- bias_df %>%
     ungroup() %>%
-    select(-opmod) %>%
+    select(-opmod, -ci_lower, -ci_upper, -sigma) %>%
     pivot_wider(names_from = parval,
                 values_from = delta)
 
