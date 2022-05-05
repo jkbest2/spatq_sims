@@ -10,6 +10,8 @@ if (interactive()) {
 }
 library(tidyverse)
 
+include("40_postproc_funs.R")
+
 root_dir <- "."
 ## Which simulation study are we fitting?
 studies <- c("qdevscaling",
@@ -31,159 +33,159 @@ estmods <- c("model",              # Non-spatial survey only
              "sptemp_ab",          # All data, spatial abundance
              "sptemp_q")           # All data, spatial abundance + catchability
 
-get_convcode <- function(fitlist) {
-  pluck(fitlist, "fit", "convergence")
-}
+## get_convcode <- function(fitlist) {
+##   pluck(fitlist, "fit", "convergence")
+## }
 
-get_mgc <- function(fitlist) {
-  pluck(fitlist, "fit", attr_getter("mgc"))
-}
+## get_mgc <- function(fitlist) {
+##   pluck(fitlist, "fit", attr_getter("mgc"))
+## }
 
-get_om_parval <- function(study, opmod = 1:6) {
-  studyvals <- switch(study,
-                      qdevscaling = 10 ^ seq(-3, -0.5, 0.5),
-                      sharedq = seq(0, 1, 0.2),
-                      prefintensity = c(0, 1, 2, 4, 8, 16),
-                      densdepq = seq(0, 1.25, 0.25),
-                      habq = 2.0 ^ (-2:3),
-                      bycatch = seq(0, 1, 0.2))
-  studyvals[opmod]
-}
+## get_om_parval <- function(study, opmod = 1:6) {
+##   studyvals <- switch(study,
+##                       qdevscaling = 10 ^ seq(-3, -0.5, 0.5),
+##                       sharedq = seq(0, 1, 0.2),
+##                       prefintensity = c(0, 1, 2, 4, 8, 16),
+##                       densdepq = seq(0, 1.25, 0.25),
+##                       habq = 2.0 ^ (-2:3),
+##                       bycatch = seq(0, 1, 0.2))
+##   studyvals[opmod]
+## }
 
-get_om_parlabel <- function(study) {
-  switch(study,
-         qdevscaling = "log catchability deviation SD",
-         sharedq = "Prop shared catchabilty dev",
-         prefintensity = "Preference power",
-         densdepq = "Density dependent multiplier",
-         habq = "Rocky habitat preference",
-         bycatch = "Comm catchability reduction")
-}
+## get_om_parlabel <- function(study) {
+##   switch(study,
+##          qdevscaling = "log catchability deviation SD",
+##          sharedq = "Prop shared catchabilty dev",
+##          prefintensity = "Preference power",
+##          densdepq = "Density dependent multiplier",
+##          habq = "Rocky habitat preference",
+##          bycatch = "Comm catchability reduction")
+## }
 
-evaluate_bias <- function(index_df) {
-  index_df %>%
-    group_by(opmod, estmod) %>%
-    nest() %>%
-    mutate(mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true),
-                                data = .x)),
-           coef = map(mod, coef),
-           delta = map_dbl(coef, pluck, "log(raw_true)"),
-           sigma = map_dbl(mod, sigma),
-           ci = map(mod, confint, parm = "log(raw_true)"),
-           ci_lower = map_dbl(ci, pluck, 1),
-           ci_upper = map_dbl(ci, pluck, 2)) %>%
-    select(opmod, estmod, delta, sigma, ci_lower, ci_upper) %>%
-    mutate(parval = map2_dbl(study, opmod, get_om_parval),
-           estmod = factor(estmod, levels = estmods))
-}
+## evaluate_bias <- function(index_df) {
+##   index_df %>%
+##     group_by(opmod, estmod) %>%
+##     nest() %>%
+##     mutate(mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true),
+##                                 data = .x)),
+##            coef = map(mod, coef),
+##            delta = map_dbl(coef, pluck, "log(raw_true)"),
+##            sigma = map_dbl(mod, sigma),
+##            ci = map(mod, confint, parm = "log(raw_true)"),
+##            ci_lower = map_dbl(ci, pluck, 1),
+##            ci_upper = map_dbl(ci, pluck, 2)) %>%
+##     select(opmod, estmod, delta, sigma, ci_lower, ci_upper) %>%
+##     mutate(parval = map2_dbl(study, opmod, get_om_parval),
+##            estmod = factor(estmod, levels = estmods))
+## }
 
-plot_bias2 <- function(index_df) {
-  study <- index_df$study[1]
-  opmods <- unique(index_df$opmod)
-  estmods <- unique(index_df$estmod)
+## plot_bias2 <- function(index_df) {
+##   study <- index_df$study[1]
+##   opmods <- unique(index_df$opmod)
+##   estmods <- unique(index_df$estmod)
 
-  bias_df <- evaluate_bias(index_df) %>%
-    mutate(parval = factor(parval))
+##   bias_df <- evaluate_bias(index_df) %>%
+##     mutate(parval = factor(parval))
 
-  x_pos <- position_dodge(width = 0.5)
+##   x_pos <- position_dodge(width = 0.5)
 
-  ggplot(bias_df, aes(x = parval, y = delta,
-                      ymin = ci_lower, ymax = ci_upper,
-                      color = estmod, group = estmod)) +
-    geom_line(position = x_pos) +
-    geom_point(position = x_pos) +
-    geom_errorbar(position = x_pos, width = 1 / length(estmods)) +
-    geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
-    scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
-    labs(x = get_om_parlabel(study),
-         y = "δ bias metric")
-}
+##   ggplot(bias_df, aes(x = parval, y = delta,
+##                       ymin = ci_lower, ymax = ci_upper,
+##                       color = estmod, group = estmod)) +
+##     geom_line(position = x_pos) +
+##     geom_point(position = x_pos) +
+##     geom_errorbar(position = x_pos, width = 1 / length(estmods)) +
+##     geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
+##     scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
+##     labs(x = get_om_parlabel(study),
+##          y = "δ bias metric")
+## }
 
-evaluate_rmse <- function(index_df) {
-  index_df %>%
-    mutate(sq_err = (index_unb - index_true)^2) %>%
-    group_by(opmod, estmod) %>%
-    summarize(rmse = sqrt(mean(sq_err)), .groups = "drop") %>%
-    select(opmod, estmod, rmse) %>%
-    mutate(parval = map2_dbl(study, opmod, get_om_parval),
-           estmod = factor(estmod, levels = estmods))
-}
+## evaluate_rmse <- function(index_df) {
+##   index_df %>%
+##     mutate(sq_err = (index_unb - index_true)^2) %>%
+##     group_by(opmod, estmod) %>%
+##     summarize(rmse = sqrt(mean(sq_err)), .groups = "drop") %>%
+##     select(opmod, estmod, rmse) %>%
+##     mutate(parval = map2_dbl(study, opmod, get_om_parval),
+##            estmod = factor(estmod, levels = estmods))
+## }
 
-plot_rmse2 <- function(index_df) {
-  study <- index_df$study[1]
-  opmods <- unique(index_df$opmod)
-  estmods <- unique(index_df$estmod)
-  rmse_df <- evaluate_rmse(index_df) %>%
-    mutate(parval = factor(parval))
-  ggplot(rmse_df, aes(x = parval, y = rmse, color = estmod, group = estmod)) +
-    geom_line() +
-    geom_point() +
-    scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
-    scale_y_continuous(limits = c(0, NA), expand = expansion(c(0, 0.1), c(0, 0))) +
-    labs(x = get_om_parlabel(study),
-         y = "RMSE")
-}
+## plot_rmse2 <- function(index_df) {
+##   study <- index_df$study[1]
+##   opmods <- unique(index_df$opmod)
+##   estmods <- unique(index_df$estmod)
+##   rmse_df <- evaluate_rmse(index_df) %>%
+##     mutate(parval = factor(parval))
+##   ggplot(rmse_df, aes(x = parval, y = rmse, color = estmod, group = estmod)) +
+##     geom_line() +
+##     geom_point() +
+##     scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
+##     scale_y_continuous(limits = c(0, NA), expand = expansion(c(0, 0.1), c(0, 0))) +
+##     labs(x = get_om_parlabel(study),
+##          y = "RMSE")
+## }
 
-evaluate_calibration <- function(index_df) {
-  index_df %>%
-    mutate(pnorm = pnorm(index_true, index_unb, unb_sd),
-           estmod = factor(estmod, levels = estmods)) %>%
-    ggplot(aes(x = pnorm, y = stat(density), fill = estmod)) +
-    geom_histogram(breaks = seq(0.0, 1.0, 0.1)) +
-    geom_hline(yintercept = 1, linetype = "dashed") +
-    facet_grid(opmod ~ estmod) +
-    labs(x = "Quantile") +
-    guides(fill = "none") +
-    theme_minimal() +
-    theme(axis.line.x = element_line(),
-          axis.title.y = element_blank(),
-          axis.ticks.y = element_blank(),
-          axis.text.y = element_blank())
-}
+## evaluate_calibration <- function(index_df) {
+##   index_df %>%
+##     mutate(pnorm = pnorm(index_true, index_unb, unb_sd),
+##            estmod = factor(estmod, levels = estmods)) %>%
+##     ggplot(aes(x = pnorm, y = stat(density), fill = estmod)) +
+##     geom_histogram(breaks = seq(0.0, 1.0, 0.1)) +
+##     geom_hline(yintercept = 1, linetype = "dashed") +
+##     facet_grid(opmod ~ estmod) +
+##     labs(x = "Quantile") +
+##     guides(fill = "none") +
+##     theme_minimal() +
+##     theme(axis.line.x = element_line(),
+##           axis.title.y = element_blank(),
+##           axis.ticks.y = element_blank(),
+##           axis.text.y = element_blank())
+## }
 
-plot_index_devs <- function(index_df) {
-  index_df %>%
-    mutate(dev = index_est - index_true,
-           estmod = factor(estmod, levels = estmods)) %>%
-    ggplot(aes(x = year, y = dev, color = estmod, group = repl)) +
-    geom_line(alpha = 0.6) +
-    geom_hline(yintercept = 0, linetype = 2) +
-    facet_grid(estmod ~ opmod) +
-    guides(color = "none")
-}
+## plot_index_devs <- function(index_df) {
+##   index_df %>%
+##     mutate(dev = index_est - index_true,
+##            estmod = factor(estmod, levels = estmods)) %>%
+##     ggplot(aes(x = year, y = dev, color = estmod, group = repl)) +
+##     geom_line(alpha = 0.6) +
+##     geom_hline(yintercept = 0, linetype = 2) +
+##     facet_grid(estmod ~ opmod) +
+##     guides(color = "none")
+## }
 
-plot_bias <- function(index_df) {
-  index_df %>%
-    mutate(estmod = factor(estmod, levels = estmods)) %>%
-    ggplot(aes(x = index_true, y = index_est, color = estmod, group = repl)) +
-    geom_point(alpha = 0.6) +
-    geom_abline(slope = 1, intercept = 0, linetype = 2) +
-    facet_grid(estmod ~ opmod) +
-    coord_fixed() +
-    guides(color = "none")
-}
+## plot_bias <- function(index_df) {
+##   index_df %>%
+##     mutate(estmod = factor(estmod, levels = estmods)) %>%
+##     ggplot(aes(x = index_true, y = index_est, color = estmod, group = repl)) +
+##     geom_point(alpha = 0.6) +
+##     geom_abline(slope = 1, intercept = 0, linetype = 2) +
+##     facet_grid(estmod ~ opmod) +
+##     coord_fixed() +
+##     guides(color = "none")
+## }
 
-evaluate_mapcor <- function(res_df) {
-  res_df %>%
-    select(study, repl, opmod, estmod, spec, res) %>%
-    group_by(study, repl, opmod) %>%
-    ## Nest here so that the true populations are read once each instead of once
-    ## for each estimation model
-    nest() %>%
-    rowwise() %>%
-    mutate(true = list(read_popstate(study, repl, opmod, root_dir = root_dir, filetype = "h5"))) %>%
-    unnest(cols = data) %>%
-    mutate(est = map(res, read_estpop),
-           cor = map2_dbl(true, est, map_correlation, method = "spearman")) %>%
-    select(study, repl, opmod, estmod, cor)
-}
+## evaluate_mapcor <- function(res_df) {
+##   res_df %>%
+##     select(study, repl, opmod, estmod, spec, res) %>%
+##     group_by(study, repl, opmod) %>%
+##     ## Nest here so that the true populations are read once each instead of once
+##     ## for each estimation model
+##     nest() %>%
+##     rowwise() %>%
+##     mutate(true = list(read_popstate(study, repl, opmod, root_dir = root_dir, filetype = "h5"))) %>%
+##     unnest(cols = data) %>%
+##     mutate(est = map(res, read_estpop),
+##            cor = map2_dbl(true, est, map_correlation, method = "spearman")) %>%
+##     select(study, repl, opmod, estmod, cor)
+## }
 
-plot_mapcor <- function(cor_df) {
-    ggplot(cor_df, aes(x = estmod, y = cor, color = estmod)) +
-    geom_boxplot() +
-      facet_grid(~ opmod) +
-      guides(color = "none")
-}
+## plot_mapcor <- function(cor_df) {
+##     ggplot(cor_df, aes(x = estmod, y = cor, color = estmod)) +
+##     geom_boxplot() +
+##       facet_grid(~ opmod) +
+##       guides(color = "none")
+## }
 
 eval_dir <- "evaluation"
 pdonly <- TRUE
