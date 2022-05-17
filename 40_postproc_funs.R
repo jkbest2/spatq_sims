@@ -9,44 +9,48 @@ get_mgc <- function(fitlist) {
 
 ## Plotting convenience functions -----------------------------------------------
 get_om_parval <- function(study, opmod = 1:6) {
-  qds <- 10 ^ (seq(-3, -0.5, 0.5))
-  qdcv <- sqrt(exp(qds ^ 2) - 1)
+  qds <- 10^(seq(-3, -0.5, 0.5))
+  qdcv <- sqrt(exp(qds^2) - 1)
   studyvals <- switch(study,
-                      qdevscaling = qdcv,
-                      sharedq = seq(0, 1, 0.2),
-                      prefintensity = c(0, 1, 2, 4, 8, 16),
-                      densdepq = seq(0, 1.25, 0.25),
-                      habq = 2 ^ (-2:3),
-                      bycatch = seq(0, 1, 0.2))
+    qdevscaling = qdcv,
+    sharedq = seq(0, 1, 0.2),
+    prefintensity = c(0, 1, 2, 4, 8, 16),
+    densdepq = seq(0, 1.25, 0.25),
+    habq = 2^(-2:3),
+    bycatch = seq(0, 1, 0.2)
+  )
   studyvals[opmod]
 }
 
 get_om_parlabel <- function(study) {
   switch(study,
-         qdevscaling = "Spatial catchability CV",
-         sharedq = "Proportion shared catchability devs",
-         prefintensity = "Preference power",
-         densdepq = "Density dependent multiplier",
-         habq = "Relative habitat preference",
-         bycatch = "Catchability reduction in bycatch areas")
+    qdevscaling = "Spatial catchability CV",
+    sharedq = "Proportion shared catchability devs",
+    prefintensity = "Preference power",
+    densdepq = "Density dependent multiplier",
+    habq = "Relative habitat preference",
+    bycatch = "Catchability reduction in bycatch areas"
+  )
 }
 
 get_study_title <- function(study) {
   switch(study,
-         qdevscaling = "a. Spatial catchability variability",
-         habq = "b. Habitat-dependent catchability",
-         sharedq = "x. Shared catchability deviations",
-         prefintensity = "c. Preference intensity",
-         densdepq = "d. Density-dependent catchability",
-         bycatch = "e. Bycatch avoidance")
+    qdevscaling = "a. Spatial catchability variability",
+    habq = "b. Habitat-dependent catchability",
+    sharedq = "x. Shared catchability deviations",
+    prefintensity = "c. Preference intensity",
+    densdepq = "d. Density-dependent catchability",
+    bycatch = "e. Bycatch avoidance"
+  )
 }
 
 get_base_om <- function(study, opmod) {
   switch(study,
-         qdevscaling = 1,
-         habq = NA,
-         prefintensity = 1,
-         densdepq = 1)
+    qdevscaling = 1,
+    habq = NA,
+    prefintensity = 1,
+    densdepq = 1
+  )
 }
 
 ## Evaluate each metric ---------------------------------------------------------
@@ -54,17 +58,22 @@ evaluate_bias <- function(index_df) {
   index_df %>%
     group_by(study, opmod, estmod) %>%
     nest() %>%
-    mutate(mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true),
-                                data = .x)),
-           coef = map(mod, coef),
-           delta = map_dbl(coef, pluck, "log(raw_true)"),
-           sigma = map_dbl(mod, sigma),
-           ci = map(mod, confint, parm = "log(raw_true)"),
-           ci_lower = map_dbl(ci, pluck, 1),
-           ci_upper = map_dbl(ci, pluck, 2)) %>%
+    mutate(
+      mod = map(data, ~ lm(log(raw_unb) ~ repl + log(raw_true),
+        data = .x
+      )),
+      coef = map(mod, coef),
+      delta = map_dbl(coef, pluck, "log(raw_true)"),
+      sigma = map_dbl(mod, sigma),
+      ci = map(mod, confint, parm = "log(raw_true)"),
+      ci_lower = map_dbl(ci, pluck, 1),
+      ci_upper = map_dbl(ci, pluck, 2)
+    ) %>%
     select(study, opmod, estmod, delta, sigma, ci_lower, ci_upper) %>%
-    mutate(parval = map2_dbl(study, opmod, get_om_parval),
-           estmod = factor(estmod, levels = estmods))
+    mutate(
+      parval = map2_dbl(study, opmod, get_om_parval),
+      estmod = factor(estmod, levels = estmods)
+    )
 }
 
 evaluate_rmse <- function(index_df) {
@@ -73,14 +82,18 @@ evaluate_rmse <- function(index_df) {
     group_by(study, opmod, estmod) %>%
     summarize(rmse = sqrt(mean(sq_err)), .groups = "drop") %>%
     select(study, opmod, estmod, rmse) %>%
-    mutate(parval = map2_dbl(study, opmod, get_om_parval),
-           estmod = factor(estmod, levels = estmods))
+    mutate(
+      parval = map2_dbl(study, opmod, get_om_parval),
+      estmod = factor(estmod, levels = estmods)
+    )
 }
 
 evaluate_calibration <- function(index_df) {
   index_df %>%
-    mutate(pnorm = pnorm(index_true, index_unb, unb_sd),
-           estmod = factor(estmod, levels = estmods)) %>%
+    mutate(
+      pnorm = pnorm(index_true, index_unb, unb_sd),
+      estmod = factor(estmod, levels = estmods)
+    ) %>%
     ggplot(aes(x = pnorm, y = stat(density), fill = estmod)) +
     geom_histogram(breaks = seq(0.0, 1.0, 0.1)) +
     geom_hline(yintercept = 1, linetype = "dashed") +
@@ -88,10 +101,12 @@ evaluate_calibration <- function(index_df) {
     labs(x = "Quantile") +
     guides(fill = "none") +
     theme_minimal() +
-    theme(axis.line.x = element_line(),
-          axis.title.y = element_blank(),
-          axis.ticks.y = element_blank(),
-          axis.text.y = element_blank())
+    theme(
+      axis.line.x = element_line(),
+      axis.title.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      axis.text.y = element_blank()
+    )
 }
 
 evaluate_mapcor <- function(res_df) {
@@ -135,17 +150,21 @@ plot_bias2 <- function(index_df) {
 
   x_pos <- position_dodge(width = 0.5)
 
-  ggplot(bias_df, aes(x = parval, y = delta,
-                      ymin = ci_lower, ymax = ci_upper,
-                      color = estmod, group = estmod)) +
+  ggplot(bias_df, aes(
+    x = parval, y = delta,
+    ymin = ci_lower, ymax = ci_upper,
+    color = estmod, group = estmod
+  )) +
     geom_line(position = x_pos) +
     geom_point(position = x_pos) +
     geom_errorbar(position = x_pos, width = 1 / length(estmods)) +
     geom_hline(yintercept = 1, linetype = "dashed", alpha = 0.5) +
     scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
-    labs(x = get_om_parlabel(study),
-         y = "δ bias metric",
-         color = "Estimation\nmodel")
+    labs(
+      x = get_om_parlabel(study),
+      y = "δ bias metric",
+      color = "Estimation\nmodel"
+    )
 }
 
 plot_rmse2 <- function(index_df) {
@@ -159,15 +178,19 @@ plot_rmse2 <- function(index_df) {
     geom_point() +
     scale_x_discrete(labels = signif(get_om_parval(study, opmods), 2)) +
     scale_y_continuous(limits = c(0, NA), expand = expansion(c(0, 0.1), c(0, 0))) +
-    labs(x = get_om_parlabel(study),
-         y = "RMSE",
-         color = "Estimation\nmodel")
+    labs(
+      x = get_om_parlabel(study),
+      y = "RMSE",
+      color = "Estimation\nmodel"
+    )
 }
 
 plot_index_devs <- function(index_df) {
   index_df %>%
-    mutate(dev = index_est - index_true,
-           estmod = factor(estmod, levels = estmods)) %>%
+    mutate(
+      dev = index_est - index_true,
+      estmod = factor(estmod, levels = estmods)
+    ) %>%
     ggplot(aes(x = year, y = dev, color = estmod, group = repl)) +
     geom_line(alpha = 0.6) +
     geom_hline(yintercept = 0, linetype = 2) +
@@ -179,60 +202,77 @@ plot_mapcor <- function(cor_df) {
   study <- cor_df$study[1]
   ggplot(cor_df, aes(x = factor(signif(parval, 2)), y = cor, color = estmod)) +
     geom_boxplot() +
-    labs(x = get_om_parlabel(study),
-         y = "Spearman correlation",
-         color = "Estimation\nmodel")
+    labs(
+      x = get_om_parlabel(study),
+      y = "Spearman correlation",
+      color = "Estimation\nmodel"
+    )
 }
 
 ## Create plots and tables ------------------------------------------------------
 postproc <- function(study, pdonly = TRUE) {
-  spec_df <- cross_df(list(study = study,
-                           repl = repls,
-                           opmod = opmods,
-                           estmod = estmods)) %>%
+  spec_df <- cross_df(list(
+    study = study,
+    repl = repls,
+    opmod = opmods,
+    estmod = estmods
+  )) %>%
     rowwise() %>%
-    mutate(spec = list(spatq_simstudyspec(study, repl = repl, opmod = opmod, estmod = estmod)),
-           paths = list(res_file_paths(study, repl, opmod, estmod, root_dir)),
-           has_rdata = file.exists(paths$rdata))
+    mutate(
+      spec = list(spatq_simstudyspec(study, repl = repl, opmod = opmod, estmod = estmod)),
+      paths = list(res_file_paths(study, repl, opmod, estmod, root_dir)),
+      has_rdata = file.exists(paths$rdata)
+    )
 
   index_df <- map_df(spec_df$spec, read_index, estmods = estmods)
 
   res_df <- spec_df %>%
     filter(has_rdata) %>%
-    mutate(res = list(read_rdata(spec)),
-           pdhess = posdefhess(res))
+    mutate(
+      res = list(read_rdata(spec)),
+      pdhess = posdefhess(res)
+    )
 
   pdhess_df <- res_df %>%
     group_by(opmod, estmod) %>%
-    summarize(pdhess = sum(pdhess),
-              .groups = "drop") %>%
+    summarize(
+      pdhess = sum(pdhess),
+      .groups = "drop"
+    ) %>%
     pivot_wider(names_from = opmod, values_from = pdhess)
 
   index_df <- res_df %>%
     select(study, repl, opmod, estmod, pdhess) %>%
     right_join(index_df, by = c("study", "repl", "opmod", "estmod"))
 
-  if (pdonly)
-      index_df <- filter(index_df, pdhess)
+  if (pdonly) {
+    index_df <- filter(index_df, pdhess)
+  }
 
-  if (!file.exists(eval_dir))
+  if (!file.exists(eval_dir)) {
     dir.create(eval_dir)
+  }
 
-  if (!file.exists(file.path(eval_dir, study)))
+  if (!file.exists(file.path(eval_dir, study))) {
     dir.create(file.path(eval_dir, study))
+  }
 
   bias_df <- evaluate_bias(index_df)
   bias_wide <- bias_df %>%
     ungroup() %>%
     select(-opmod, -sigma, -ci_lower, -ci_upper) %>%
-    pivot_wider(names_from = parval,
-                values_from = delta)
+    pivot_wider(
+      names_from = parval,
+      values_from = delta
+    )
 
   rmse_df <- evaluate_rmse(index_df)
   rmse_wide <- rmse_df %>%
     select(-opmod) %>%
-    pivot_wider(names_from = parval,
-                values_from = rmse)
+    pivot_wider(
+      names_from = parval,
+      values_from = rmse
+    )
 
   mapcor_df <- evaluate_mapcor(res_df)
 
@@ -243,63 +283,73 @@ postproc <- function(study, pdonly = TRUE) {
   rmse_plot <- plot_rmse2(index_df)
   mapcor_plot <- plot_mapcor(mapcor_df)
 
-  list(study = study,
-       pdhess_df = pdhess_df,
-       bias_df = bias_df,
-       bias_wide = bias_wide,
-       rmse_df = rmse_df,
-       rmse_wide = rmse_wide,
-       bias_plot = bias_plot,
-       bias2_plot = bias2_plot,
-       calibration_plot = calibration_plot,
-       index_devs = index_devs,
-       rmse_plot = rmse_plot,
-       mapcor_plot = mapcor_plot)
+  list(
+    study = study,
+    pdhess_df = pdhess_df,
+    bias_df = bias_df,
+    bias_wide = bias_wide,
+    rmse_df = rmse_df,
+    rmse_wide = rmse_wide,
+    bias_plot = bias_plot,
+    bias2_plot = bias2_plot,
+    calibration_plot = calibration_plot,
+    index_devs = index_devs,
+    rmse_plot = rmse_plot,
+    mapcor_plot = mapcor_plot
+  )
+}
+
+make_fig_subdir <- function(eval_dir, study) {
+  if (!dir.exists(file.path(eval_dir, study))) {
+    dir.create(file.path(eval_dir, study), recursive = TRUE)
+  }
+}
+
+list_figs <- function() {
+  c(
+    "bias_plot", "bias2_plot", "calibration", "index_devs", "rmse_plot",
+    "mapcor_plot"
+  )
+}
+
+list_tables <- function() {
+  c("pdhess_df", "bias_df", "bias_wide", "rmse_df", "rmse_wide")
 }
 
 save_tables <- function(studypost, eval_dir) {
   study <- studypost$study
-  write_csv(studypost$pdhess_df, file.path(eval_dir, study, "pdhess_wide.csv"))
-  write_csv(studypost$bias_df, file.path(eval_dir, study, "bias.csv"))
-  write_csv(studypost$bias_wide, file.path(eval_dir, study, "bias_wide.csv"))
-  write_csv(studypost$rmse_df, file.path(eval_dir, study, "rmse.csv"))
-  write_csv(studypost$rmse_wide, file.path(eval_dir, study, "rmse_wide.csv"))
-  invisible(TRUE)
+
+  make_fig_subdir(eval_dir, study)
+
+  tabs <- c("pdhess_df", "bias_df", "bias_wide", "rmse_df", "rmse_wide")
+
+  walk(
+    tabs,
+    ~ write_csv(
+      studypost[[.]],
+      file.path(eval_dir, study, paste0(., ".csv"))
+    )
+  )
 }
 
 save_plots <- function(studypost, eval_dir, width = 6, height = 4) {
   study <- studypost$study
-  ggsave(file.path(eval_dir, study, "bias_plot.svg"),
-         studypost$bias_plot,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "bias2_plot.svg"),
-         studypost$bias2_plot,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "calibration.svg"),
-         studypost$calibration_plot,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "index_devs.svg"),
-         studypost$index_devs,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "rmse_plot.svg"),
-         studypost$rmse_plot,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "bias_plot.png"),
-         studypost$bias_plot,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "bias2_plot.png"),
-         studypost$bias2_plot,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "calibration.png"),
-         studypost$calibration_plot,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "index_devs.png"),
-         studypost$index_devs,
-         width = width, height = height)
-  ggsave(file.path(eval_dir, study, "rmse_plot.png"),
-         studypost$rmse_plot,
-         width = width, height = height)
-  invisible(TRUE)
+
+  make_fig_subdir(eval_dir, study)
+
+  figs <- c(
+    "bias_plot", "bias2_plot", "calibration", "index_devs", "rmse_plot",
+    "mapcor_plot"
+  )
+  fts <- c("svg", "png")
+
+  walk(
+    cross2(figs, fts),
+    ~ ggsave(file.path(eval_dir, study, paste0(.[[1]], ".", .[[2]])),
+      studypost[[.[[1]]]],
+      width = width, height = height
+    )
+  )
 }
 
 ## Get ylims for each plot type -------------------------------------------------
@@ -347,7 +397,7 @@ refine_mapcor_plot <- function(studypost, study, ylims) {
 ## Patchwork plot to hold y-axis label ------------------------------------------
 make_ylab_plot <- function(label) {
   ggplot(data.frame(l = label, x = 1, y = 1)) +
-      geom_text(aes(x, y, label = l), angle = 90) +
-      theme_void() +
-      coord_cartesian(clip = "off")
+    geom_text(aes(x, y, label = l), angle = 90) +
+    theme_void() +
+    coord_cartesian(clip = "off")
 }
