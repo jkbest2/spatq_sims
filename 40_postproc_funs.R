@@ -104,10 +104,12 @@ evaluate_mapcor <- function(res_df) {
     rowwise() %>%
     mutate(true = list(read_popstate(study, repl, opmod, root_dir = root_dir, filetype = "h5"))) %>%
     unnest(cols = data) %>%
-    mutate(est = map(res, read_estpop),
-           cor = map2_dbl(true, est, map_correlation, method = "spearman"),
-           estmod = factor(estmod, levels = estmods),
-           parval = map2_dbl(study, opmod, get_om_parval)) %>%
+    mutate(
+      est = map(res, read_estpop),
+      cor = map2_dbl(true, est, map_correlation, method = "spearman", byyear = TRUE),
+      estmod = factor(estmod, levels = estmods),
+      parval = map2_dbl(study, opmod, get_om_parval)
+    ) %>%
     select(study, repl, opmod, parval, estmod, cor)
 }
 
