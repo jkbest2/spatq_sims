@@ -121,11 +121,13 @@ evaluate_mapcor <- function(res_df) {
     unnest(cols = data) %>%
     mutate(
       est = map(res, read_estpop),
-      cor = map2_dbl(true, est, map_correlation, method = "spearman", byyear = TRUE),
+      cor_vec = map2(true, est, map_correlation, method = "spearman", byyear = TRUE),
+      cor_df = map(cor_vec, ~ data.frame(year = seq_along(.), cor = .)),
       estmod = factor(estmod, levels = estmods),
       parval = map2_dbl(study, opmod, get_om_parval)
     ) %>%
-    select(study, repl, opmod, parval, estmod, cor)
+    unnest(cor_df) %>%
+    select(study, repl, opmod, parval, estmod, year, cor)
 }
 
 ## Plot each metric -------------------------------------------------------------
